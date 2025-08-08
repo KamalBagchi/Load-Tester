@@ -105,6 +105,52 @@ K6-Load-Testing/
    k6 version
    ```
 
+## 🎯 Getting Started
+
+### Quick Start (3 Steps)
+
+1. **🚀 Start the Frontend**
+   ```bash
+   ./scripts/start_server.sh
+   ```
+   This will:
+   - ✅ Validate all dependencies (Python, K6, pip)
+   - ✅ Create virtual environment if needed
+   - ✅ Install Python packages
+   - ✅ Create required directories
+   - ✅ Start Flask web server at **http://localhost:5000**
+
+2. **🌐 Open Web Interface**
+   ```bash
+   # Open in your browser:
+   http://localhost:5000
+   ```
+   You'll see a modern web interface with:
+   - 📤 Drag & drop file upload
+   - ⚙️ Advanced test configuration options
+   - 📊 Real-time test monitoring
+
+3. **🧪 Run Your First Test**
+   - **Upload** your `endpoints.json` file via the web interface
+   - **Configure** test stages (optional - defaults provided)
+   - **Click** "Start Load Test" button
+   - **Monitor** real-time progress
+   - **View** interactive HTML reports with charts
+
+### Alternative: Command Line Testing
+
+If you prefer command line or have existing endpoint files:
+
+```bash
+# Quick test with latest uploaded file
+./scripts/quick_test.sh
+
+# Test with specific file
+./scripts/run_tests.sh data/uploads/your-endpoints.json
+```
+
+## 📋 Detailed Usage
+
 ### 🎯 Usage
 
 #### Method 1: Web Interface (Recommended)
@@ -337,17 +383,23 @@ The project includes three powerful automation scripts located in the `scripts/`
 
 ### 🔄 **Script Workflow**
 
-```mermaid
-graph LR
-    A[Upload endpoints.json via web] --> B[quick_test.sh]
-    A --> C[run_tests.sh specific-file.json]
-    D[start_server.sh] --> E[Web Interface]
-    E --> A
-    B --> F[K6 Test Execution]
-    C --> F
-    F --> G[HTML Report Generation]
-    G --> H[View Results]
+**Typical Usage Flow:**
 ```
+1. 🖥️  start_server.sh          → Start web interface
+2. 🌐 Web Interface             → Upload endpoints.json file  
+3. ⚡ quick_test.sh             → Quick test with latest file
+   OR
+   🚀 run_tests.sh <file>       → Test with specific file
+4. 📊 K6 Test Execution         → Load testing in progress
+5. 📈 HTML Report Generation    → Interactive charts created
+6. 👀 View Results             → Analyze performance data
+```
+
+**Script Relationships:**
+- **`start_server.sh`** enables the web interface for file uploads
+- **`quick_test.sh`** automatically finds and tests the latest uploaded file
+- **`run_tests.sh`** provides control over which specific file to test
+- All scripts generate comprehensive HTML reports with interactive charts
 
 ### 🛠️ **Script Customization**
 
