@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Test Status - Load Testing Tool{% endblock %}
+
+{% block content %}
+<div class="gradient-bg">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card card-custom">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <div id="statusIcon" class="mb-3">
+                                <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+                            </div>
+                            <h2 id="statusTitle" class="mb-2">Running Load Test</h2>
+                            <p id="statusMessage" class="text-muted">Please wait while we process your test...</p>
+                        </div>
+
+                        <!-- Progress Section -->
+                        <div id="progressSection" class="mb-4">
+                            <div class="progress mb-3" style="height: 20px;">
+                                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 25%"></div>
+                            </div>
+                            <p id="currentStage" class="text-center text-muted">Initializing...</p>
+                        </div>
+
+                        <!-- Test Info -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <strong>Test ID:</strong>
+                                <span class="text-muted">{{ test_id }}</span>
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Started:</strong>
+                                <span id="startTime" class="text-muted">-</span>
+                            </div>
+                        </div>
+
+                        <!-- Results Section (Hidden initially) -->
+                        <div id="resultsSection" class="d-none">
+                            <hr>
+                            <h4 class="mb-3">
+                                <i class="fas fa-chart-bar me-2"></i>Test Results
+                            </h4>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <button id="viewReportBtn" class="btn btn-success btn-custom w-100" disabled>
+                                        <i class="fas fa-eye me-2"></i>View Report
+                                    </button>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <button id="downloadReportBtn" class="btn btn-primary btn-custom w-100" disabled>
+                                        <i class="fas fa-download me-2"></i>Download Report
+                                    </button>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="dropdown">
+                                        <button class="btn btn-outline-secondary btn-custom w-100 dropdown-toggle" 
+                                                type="button" id="downloadDropdown" data-bs-toggle="dropdown" disabled>
+                                            <i class="fas fa-file-export me-2"></i>Export Data
+                                        </button>
+                                        <ul class="dropdown-menu w-100">
+                                            <li>
+                                                <a id="downloadSummaryBtn" class="dropdown-item" href="#">
+                                                    <i class="fas fa-file-alt me-2"></i>Summary JSON
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a id="downloadDetailedBtn" class="dropdown-item" href="#">
+                                                    <i class="fas fa-database me-2"></i>Detailed JSON
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Error Section (Hidden initially) -->
+                        <div id="errorSection" class="d-none">
+                            <div class="alert alert-danger">
+                                <h5 class="alert-heading">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Test Failed
+                                </h5>
+                                <p id="errorMessage" class="mb-0"></p>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="text-center mt-4">
+                            <a href="/" class="btn btn-outline-primary btn-custom">
+                                <i class="fas fa-arrow-left me-2"></i>Run Another Test
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Details Card -->
+                <div class="card card-custom mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-info-circle me-2"></i>Test Information
+                        </h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Filename:</strong> <span id="filename">-</span></p>
+                                <p><strong>Status:</strong> <span id="status" class="badge bg-secondary">-</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Upload Time:</strong> <span id="uploadTime">-</span></p>
+                                <p><strong>Duration:</strong> <span id="duration">-</span></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Stages Section -->
+                        <div id="customStagesSection" class="mt-3 d-none">
+                            <h6><i class="fas fa-chart-area me-2"></i>Custom Stages Configuration</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Stage</th>
+                                            <th>Duration</th>
+                                            <th>Target Users</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stagesTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const testId = '{{ test_id }}';
+    let startTime = null;
+    let pollInterval = null;
+
+    // Status mapping for UI updates
+    const statusConfig = {
+        'queued': {
+            icon: 'fas fa-clock fa-3x text-warning',
+            title: 'Test Queued',
+            message: 'Your test is in the queue and will start shortly...',
+            progress: 10,
+            badge: 'bg-warning'
+        },
+        'running': {
+            icon: 'fas fa-spinner fa-spin fa-3x text-primary',
+            title: 'Running Load Test',
+            message: 'Your test is currently running. This may take a few minutes...',
+            progress: 50,
+            badge: 'bg-primary'
+        },
+        'completed': {
+            icon: 'fas fa-check-circle fa-3x text-success',
+            title: 'Test Completed',
+            message: 'Your load test has completed successfully!',
+            progress: 100,
+            badge: 'bg-success'
+        },
+        'failed': {
+            icon: 'fas fa-times-circle fa-3x text-danger',
+            title: 'Test Failed',
+            message: 'There was an error running your test.',
+            progress: 0,
+            badge: 'bg-danger'
+        }
+    };
+
+    function updateStatus(data) {
+        const config = statusConfig[data.status] || statusConfig['queued'];
+        
+        // Update icon and title
+        document.getElementById('statusIcon').innerHTML = `<i class="${config.icon}"></i>`;
+        document.getElementById('statusTitle').textContent = config.title;
+        document.getElementById('statusMessage').textContent = config.message;
+        
+        // Update progress
+        const progressBar = document.getElementById('progressBar');
+        progressBar.style.width = config.progress + '%';
+        progressBar.setAttribute('aria-valuenow', config.progress);
+        
+        // Update stage
+        if (data.stage) {
+            document.getElementById('currentStage').textContent = data.stage;
+        }
+        
+        // Update status badge
+        const statusBadge = document.getElementById('status');
+        statusBadge.textContent = data.status.charAt(0).toUpperCase() + data.status.slice(1);
+        statusBadge.className = `badge ${config.badge}`;
+        
+        // Update other info
+        if (data.filename) {
+            document.getElementById('filename').textContent = data.filename;
+        }
+        
+        if (data.upload_time) {
+            const uploadTime = new Date(data.upload_time);
+            document.getElementById('uploadTime').textContent = uploadTime.toLocaleString();
+            
+            if (!startTime) {
+                startTime = uploadTime;
+                document.getElementById('startTime').textContent = uploadTime.toLocaleString();
+            }
+        }
+        
+        // Update duration
+        if (startTime) {
+            const duration = Math.floor((new Date() - startTime) / 1000);
+            const minutes = Math.floor(duration / 60);
+            const seconds = duration % 60;
+            document.getElementById('duration').textContent = 
+                `${minutes}m ${seconds}s`;
+        }
+        
+        // Display custom stages if they exist
+        if (data.custom_stages && data.custom_stages.length > 0) {
+            const customStagesSection = document.getElementById('customStagesSection');
+            const stagesTableBody = document.getElementById('stagesTableBody');
+            
+            // Clear existing content
+            stagesTableBody.innerHTML = '';
+            
+            // Add each stage to the table
+            data.custom_stages.forEach((stage, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>Stage ${index + 1}</strong></td>
+                    <td>${stage.duration}</td>
+                    <td>${stage.target} users</td>
+                `;
+                stagesTableBody.appendChild(row);
+            });
+            
+            // Show the custom stages section
+            customStagesSection.classList.remove('d-none');
+        }
+        
+        // Handle completed status
+        if (data.status === 'completed') {
+            document.getElementById('progressSection').classList.add('d-none');
+            document.getElementById('resultsSection').classList.remove('d-none');
+            
+            // Enable buttons
+            document.getElementById('viewReportBtn').disabled = false;
+            document.getElementById('downloadReportBtn').disabled = false;
+            document.getElementById('downloadDropdown').disabled = false;
+            
+            // Set up button actions
+            document.getElementById('viewReportBtn').onclick = () => {
+                window.open(`/view/report/${testId}`, '_blank');
+            };
+            
+            document.getElementById('downloadReportBtn').onclick = () => {
+                window.location.href = `/download/report/${testId}`;
+            };
+            
+            document.getElementById('downloadSummaryBtn').onclick = () => {
+                window.location.href = `/download/results/${testId}/summary`;
+            };
+            
+            document.getElementById('downloadDetailedBtn').onclick = () => {
+                window.location.href = `/download/results/${testId}/detailed`;
+            };
+            
+            // Stop polling
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        }
+        
+        // Handle failed status
+        if (data.status === 'failed') {
+            document.getElementById('progressSection').classList.add('d-none');
+            document.getElementById('errorSection').classList.remove('d-none');
+            
+            if (data.error) {
+                document.getElementById('errorMessage').textContent = data.error;
+            }
+            
+            // Stop polling
+            if (pollInterval) {
+                clearInterval(pollInterval);
+            }
+        }
+    }
+
+    function pollStatus() {
+        fetch(`/api/test/${testId}/status`)
+            .then(response => response.json())
+            .then(data => {
+                updateStatus(data);
+            })
+            .catch(error => {
+                console.error('Error polling status:', error);
+                // Stop polling on error
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                }
+            });
+    }
+
+    // Start polling
+    pollStatus(); // Initial poll
+    pollInterval = setInterval(pollStatus, 2000); // Poll every 2 seconds
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,399 @@
+#!/usr/bin/env python3
+"""
+K6 Load Testing Web Frontend
+A Flask web application for uploading endpoints JSON and generating load test reports
+"""
+
+import os
+import json
+import subprocess
+import shutil
+import tempfile
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, send_from_directory
+from werkzeug.utils import secure_filename
+import uuid
+import threading
+import time
+
+app = Flask(__name__)
+app.secret_key = 'k6-load-testing-secret-key'  # Change this in production
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+
+# Configuration
+# Get the project root directory (two levels up from src/web/)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, 'data', 'uploads')
+RESULTS_FOLDER = os.path.join(PROJECT_ROOT, 'data', 'results')  
+REPORTS_FOLDER = os.path.join(PROJECT_ROOT, 'data', 'reports')
+ALLOWED_EXTENSIONS = {'json'}
+
+# Ensure directories exist
+for folder in [UPLOAD_FOLDER, RESULTS_FOLDER, REPORTS_FOLDER]:
+    os.makedirs(folder, exist_ok=True)
+
+# Store test status in memory (in production, use Redis or database)
+test_status = {}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def validate_endpoints_json(filepath):
+    """Validate the uploaded endpoints JSON file"""
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+        
+        # Check required fields
+        required_fields = ['base_url', 'endpoints']
+        for field in required_fields:
+            if field not in data:
+                return False, f"Missing required field: {field}"
+        
+        # Check if endpoints is a list
+        if not isinstance(data['endpoints'], list):
+            return False, "endpoints must be an array"
+        
+        # Check if at least one endpoint exists
+        if len(data['endpoints']) == 0:
+            return False, "At least one endpoint is required"
+        
+        # Validate each endpoint
+        for i, endpoint in enumerate(data['endpoints']):
+            required_endpoint_fields = ['name', 'method', 'url']
+            for field in required_endpoint_fields:
+                if field not in endpoint:
+                    return False, f"Endpoint {i+1} missing required field: {field}"
+        
+        return True, "Valid endpoints JSON file"
+    
+    except json.JSONDecodeError as e:
+        return False, f"Invalid JSON format: {str(e)}"
+    except Exception as e:
+        return False, f"Error validating file: {str(e)}"
+
+def create_custom_executor(app_dir, test_dir, custom_stages):
+    """Create a custom test_executor.js with user-defined stages"""
+    
+    # Read the original executor file
+    original_file = os.path.join(app_dir, '../k6/test_executor.js')
+    with open(original_file, 'r') as f:
+        content = f.read()
+    
+    # Convert custom stages to JavaScript format
+    stages_js = "[\n"
+    for stage in custom_stages:
+        stages_js += f"        {{ duration: '{stage['duration']}', target: {stage['target']} }},\n"
+    stages_js = stages_js.rstrip(',\n') + "\n          ]"
+    
+    # Replace the stages configuration in the JavaScript file
+    import re
+    
+    # Find the stages array and replace it - look for the specific stages property
+    pattern = r'stages:\s*\[[\s\S]*?\]'
+    replacement = f'stages: {stages_js}'
+    
+    modified_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+    
+    # Write the modified content to the test directory
+    custom_file = os.path.join(test_dir, 'test_executor.js')
+    with open(custom_file, 'w') as f:
+        f.write(modified_content)
+
+def run_k6_test(test_id, endpoints_file):
+    """Run K6 test in a separate thread"""
+    original_cwd = os.getcwd()  # Store original directory at the start
+    try:
+        test_status[test_id]['status'] = 'running'
+        test_status[test_id]['stage'] = 'Preparing test environment'
+        
+        # Get the directory where the Flask app is located
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Create a temporary directory for this test
+        test_dir = os.path.join(RESULTS_FOLDER, test_id)
+        os.makedirs(test_dir, exist_ok=True)
+        
+        # Copy necessary files to test directory
+        shutil.copy(endpoints_file, os.path.join(test_dir, 'endpoints.json'))
+        shutil.copy(os.path.join(app_dir, '../k6/routes.js'), test_dir)
+        shutil.copy(os.path.join(app_dir, '../k6/config_validator.js'), test_dir)
+        shutil.copy(os.path.join(app_dir, '../utils/report_generator.py'), test_dir)
+        
+        # Handle custom stages configuration
+        custom_stages = test_status[test_id].get('custom_stages')
+        if custom_stages:
+            # Create custom test_executor.js with user-defined stages
+            create_custom_executor(app_dir, test_dir, custom_stages)
+        else:
+            # Use default test_executor.js
+            shutil.copy(os.path.join(app_dir, '../k6/test_executor.js'), test_dir)
+        
+        # Change to test directory
+        os.chdir(test_dir)
+        
+        # Create timestamp for unique filenames (only for internal K6 files)
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        
+        # Extract report title from config
+        with open('endpoints.json', 'r') as f:
+            config = json.load(f)
+        
+        report_title = config.get('report_title', 'k6-load-test')
+        
+        # Improved filename sanitization for clean report name
+        import re
+        # Remove special characters and normalize
+        safe_name = re.sub(r'[^\w\s-]', '', report_title)
+        # Replace multiple spaces/hyphens with single hyphen
+        safe_name = re.sub(r'[-\s]+', '-', safe_name)
+        # Clean up and lowercase
+        safe_name = safe_name.strip('-').lower()
+        # Remove common redundant words
+        safe_name = re.sub(r'\b(report|test|endpoint|api)\b', '', safe_name)
+        # Clean up any double hyphens created by word removal
+        safe_name = re.sub(r'-+', '-', safe_name).strip('-')
+        
+        # Fallback if name becomes empty
+        if not safe_name:
+            safe_name = 'load-test'
+        
+        # Use timestamp only for internal K6 files to avoid conflicts
+        test_name = f"{safe_name}-{timestamp}"
+        # Use clean name only for the final report
+        clean_report_name = safe_name
+        
+        test_status[test_id]['stage'] = 'Running K6 load test'
+        
+        # Run K6 test
+        k6_cmd = [
+            'k6', 'run',
+            f'--summary-export={test_name}_summary.json',
+            f'--out=json={test_name}_detailed.json',
+            'test_executor.js'
+        ]
+        
+        result = subprocess.run(k6_cmd, capture_output=True, text=True, timeout=300)  # 5 minute timeout
+        
+        # K6 returns exit code 99 when thresholds are crossed, but test completed successfully
+        # K6 returns exit code 0 when test completed with all thresholds passed
+        # Any other exit code indicates a real failure
+        if result.returncode != 0 and result.returncode != 99:
+            test_status[test_id]['status'] = 'failed'
+            test_status[test_id]['error'] = f"K6 test failed: {result.stderr}"
+            return
+        
+        # Store threshold status for the report
+        if result.returncode == 99:
+            test_status[test_id]['thresholds_crossed'] = True
+            test_status[test_id]['warning'] = "Some performance thresholds were exceeded during the test"
+        else:
+            test_status[test_id]['thresholds_crossed'] = False
+        
+        test_status[test_id]['stage'] = 'Generating HTML report'
+        
+        # Ensure the reports directory exists before generating report
+        project_root = os.path.dirname(os.path.dirname(app_dir))
+        reports_dir = os.path.join(project_root, 'data', 'reports')
+        os.makedirs(reports_dir, exist_ok=True)
+        
+        # Generate HTML report using the Python executable from the virtual environment
+        # Get the project root directory (two levels up from src/web/)
+        python_executable = os.path.join(project_root, '.venv', 'bin', 'python')
+        report_cmd = [python_executable, 'report_generator.py', f'{test_name}_detailed.json']
+        result = subprocess.run(report_cmd, capture_output=True, text=True, timeout=60)
+        
+        if result.returncode != 0:
+            test_status[test_id]['status'] = 'failed'
+            test_status[test_id]['error'] = f"Report generation failed: {result.stderr}\nSTDOUT: {result.stdout}"
+            return
+        
+        # Wait a moment for file system to sync
+        import time
+        time.sleep(1)
+        
+        # Find the generated HTML report - the report generator outputs to ../../data/reports/
+        # Since we've changed directory to test_dir, we need to use absolute paths
+        project_root = os.path.dirname(os.path.dirname(app_dir))
+        reports_dir = os.path.join(project_root, 'data', 'reports')
+        
+        html_files = []
+        
+        # Check the reports directory where the report generator actually outputs files
+        if os.path.exists(reports_dir):
+            html_files.extend([f for f in os.listdir(reports_dir) if f.endswith('.html')])
+            # Sort by modification time to get the most recent
+            if html_files:
+                html_files.sort(key=lambda x: os.path.getmtime(os.path.join(reports_dir, x)), reverse=True)
+        
+        # Also check relative path from current directory (where report generator runs)
+        relative_reports_dir = "../../data/reports"
+        if os.path.exists(relative_reports_dir):
+            relative_files = [f for f in os.listdir(relative_reports_dir) if f.endswith('.html')]
+            if relative_files and not html_files:  # Use relative files if absolute path didn't work
+                html_files = relative_files
+                reports_dir = relative_reports_dir  # Update reports_dir for later use
+        
+        if not html_files:
+            # List all files in the directory for debugging
+            all_files = os.listdir('.')
+            reports_files = os.listdir(reports_dir) if os.path.exists(reports_dir) else []
+            test_status[test_id]['status'] = 'failed'
+            test_status[test_id]['error'] = f"No HTML report was generated. Files in test directory: {all_files}. Files in reports directory: {reports_files}. Report generation output: {result.stdout}"
+            return
+        
+        # Use the most recent HTML report (should be the one we just generated)
+        final_report_name = html_files[0]
+        
+        # The report is already in the reports directory, so we don't need to move it
+        # Just update the test status with the report filename
+        
+        # Update test status
+        test_status[test_id]['status'] = 'completed'
+        test_status[test_id]['report_file'] = final_report_name
+        test_status[test_id]['summary_file'] = f"{test_name}_summary.json"
+        test_status[test_id]['detailed_file'] = f"{test_name}_detailed.json"
+        
+        # Move result files to web results folder with clean names
+        for result_file in [f"{test_name}_summary.json", f"{test_name}_detailed.json"]:
+            if os.path.exists(result_file):
+                clean_result_name = os.path.basename(result_file)
+                shutil.move(result_file, os.path.join(RESULTS_FOLDER, clean_result_name))
+        
+    except subprocess.TimeoutExpired:
+        test_status[test_id]['status'] = 'failed'
+        test_status[test_id]['error'] = "Test timed out"
+    except Exception as e:
+        test_status[test_id]['status'] = 'failed'
+        test_status[test_id]['error'] = f"Unexpected error: {str(e)}"
+    finally:
+        # Change back to original directory
+        os.chdir(original_cwd)
+        # Clean up test directory
+        if 'test_dir' in locals():
+            shutil.rmtree(test_dir, ignore_errors=True)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        flash('No file selected')
+        return redirect(request.url)
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('No file selected')
+        return redirect(request.url)
+    
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
+        file.save(filepath)
+        
+        # Validate the uploaded file
+        is_valid, message = validate_endpoints_json(filepath)
+        if not is_valid:
+            os.remove(filepath)  # Clean up invalid file
+            flash(f'Invalid file: {message}')
+            return redirect(url_for('index'))
+        
+        # Parse custom stages configuration if provided
+        custom_stages = None
+        stage_durations = request.form.getlist('stage_duration[]')
+        stage_targets = request.form.getlist('stage_target[]')
+        
+        if stage_durations and stage_targets and len(stage_durations) == len(stage_targets):
+            # Filter out empty values
+            valid_stages = []
+            for duration, target in zip(stage_durations, stage_targets):
+                if duration.strip() and target.strip():
+                    try:
+                        target_int = int(target)
+                        valid_stages.append({
+                            'duration': duration.strip(),
+                            'target': target_int
+                        })
+                    except ValueError:
+                        pass  # Skip invalid target values
+            
+            if valid_stages:
+                custom_stages = valid_stages
+        
+        # Generate unique test ID
+        test_id = str(uuid.uuid4())
+        
+        # Initialize test status
+        test_status[test_id] = {
+            'status': 'queued',
+            'stage': 'Initializing',
+            'filename': filename,
+            'upload_time': datetime.now().isoformat(),
+            'custom_stages': custom_stages
+        }
+        
+        # Start K6 test in background thread
+        thread = threading.Thread(target=run_k6_test, args=(test_id, filepath))
+        thread.daemon = True
+        thread.start()
+        
+        return redirect(url_for('test_status_page', test_id=test_id))
+    
+    flash('Invalid file type. Please upload a JSON file.')
+    return redirect(url_for('index'))
+
+@app.route('/test/<test_id>')
+def test_status_page(test_id):
+    if test_id not in test_status:
+        flash('Test not found')
+        return redirect(url_for('index'))
+    
+    return render_template('test_status.html', test_id=test_id)
+
+@app.route('/api/test/<test_id>/status')
+def get_test_status(test_id):
+    if test_id not in test_status:
+        return jsonify({'error': 'Test not found'}), 404
+    
+    return jsonify(test_status[test_id])
+
+@app.route('/download/report/<test_id>')
+def download_report(test_id):
+    if test_id not in test_status or test_status[test_id]['status'] != 'completed':
+        flash('Report not available')
+        return redirect(url_for('index'))
+    
+    report_file = test_status[test_id]['report_file']
+    return send_from_directory(REPORTS_FOLDER, report_file, as_attachment=True)
+
+@app.route('/view/report/<test_id>')
+def view_report(test_id):
+    if test_id not in test_status or test_status[test_id]['status'] != 'completed':
+        flash('Report not available')
+        return redirect(url_for('index'))
+    
+    report_file = test_status[test_id]['report_file']
+    return send_from_directory(REPORTS_FOLDER, report_file)
+
+@app.route('/download/results/<test_id>/<file_type>')
+def download_results(test_id, file_type):
+    if test_id not in test_status or test_status[test_id]['status'] != 'completed':
+        flash('Results not available')
+        return redirect(url_for('index'))
+    
+    if file_type == 'summary':
+        filename = f"{test_id}_{test_status[test_id]['summary_file']}"
+    elif file_type == 'detailed':
+        filename = f"{test_id}_{test_status[test_id]['detailed_file']}"
+    else:
+        flash('Invalid file type')
+        return redirect(url_for('index'))
+    
+    return send_from_directory(RESULTS_FOLDER, filename, as_attachment=True)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

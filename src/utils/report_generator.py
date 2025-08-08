@@ -22,15 +22,30 @@ def sanitize_filename(title):
     safe_name = safe_name.strip('-').lower()
     return safe_name
 
-def load_routes_config(config_file='endpoints.json'):
+def load_routes_config(config_file=None):
     """Load routes configuration to get endpoint names and thresholds"""
+    
+    # If no config file specified, try to find it intelligently
+    if config_file is None:
+        # Find project root
+        current_dir = os.getcwd()
+        project_root = current_dir
+        
+        while project_root != os.path.dirname(project_root):  # Not at filesystem root
+            if (os.path.exists(os.path.join(project_root, 'requirements.txt')) and 
+                os.path.exists(os.path.join(project_root, 'src'))):
+                break
+            project_root = os.path.dirname(project_root)
+        
+        config_file = os.path.join(project_root, 'config', 'endpoints.json')
+    
     try:
         with open(config_file, 'r') as f:
             config = json.load(f)
         return config
     except FileNotFoundError:
         # Try alternative paths if the default doesn't work
-        alt_paths = ['dev/endpoints.json', '../endpoints.json']
+        alt_paths = ['endpoints.json', 'config/endpoints.json', '../config/endpoints.json', '../../config/endpoints.json']
         for alt_path in alt_paths:
             try:
                 with open(alt_path, 'r') as f:
@@ -61,7 +76,7 @@ def get_endpoint_info_from_config(url, method, config):
     
     return None, None
 
-def analyze_k6_json_with_timeline(json_file, config_file='endpoints.json'):
+def analyze_k6_json_with_timeline(json_file, config_file=None):
     """Analyze k6 JSON output and extract metrics with timeline data"""
     print(f"🔍 Analyzing {json_file} with timeline data...")
     
@@ -714,7 +729,7 @@ def main():
     parser = argparse.ArgumentParser(description='Generate interactive HTML report with charts from k6 JSON results')
     parser.add_argument('json_file', help='k6 JSON results file')
     parser.add_argument('-o', '--output', help='Output HTML file (optional - will use report title from config if not specified)')
-    parser.add_argument('-c', '--config', default='endpoints.json', help='Routes configuration file')
+    parser.add_argument('-c', '--config', help='Routes configuration file (will auto-detect if not specified)')
     
     args = parser.parse_args()
     
@@ -729,7 +744,21 @@ def main():
         report_title = routes_config.get('report_title', 'k6-load-test-report') if routes_config else 'k6-load-test-report'
         safe_filename = sanitize_filename(report_title)
         timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-        output_file = f"reports/{safe_filename}-{timestamp}.html"
+        
+        # Find project root by looking for key files/directories
+        current_dir = os.getcwd()
+        project_root = current_dir
+        
+        # Look for project indicators (requirements.txt, .venv, etc.)
+        while project_root != os.path.dirname(project_root):  # Not at filesystem root
+            if (os.path.exists(os.path.join(project_root, 'requirements.txt')) and 
+                os.path.exists(os.path.join(project_root, 'src'))):
+                break
+            project_root = os.path.dirname(project_root)
+        
+        # Create reports directory path relative to project root
+        reports_dir = os.path.join(project_root, 'data', 'reports')
+        output_file = os.path.join(reports_dir, f"{safe_filename}-{timestamp}.html")
     
     stats = analyze_k6_json_with_timeline(args.json_file, args.config)
     if stats:

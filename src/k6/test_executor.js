@@ -24,8 +24,10 @@ loadConfiguration(CONFIG);
 // K6 test configuration
 export let options = {
   stages: [
-        { duration: '1m', target: 200 },
-        { duration: '1m', target: 0 },
+        { duration: '1m', target: 50 },      // Ramp up to 50 users over 1 minute
+        { duration: '20s', target: 0 },      // Ramp down to 0 users over 20 seconds
+        { duration: '40s', target: 0 },      // Stay at 0 users for 40 seconds
+        { duration: '1m', target: 50 },      // Ramp back up to 50 users over 1 minute
           ],
   thresholds: generateK6Thresholds(),  // Use dynamic thresholds from route configurations
 };
