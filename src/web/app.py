@@ -173,18 +173,88 @@ def run_k6_test(test_id, endpoints_file):
             'test_executor.js'
         ]
         
-        result = subprocess.run(k6_cmd, capture_output=True, text=True, timeout=300)  # 5 minute timeout
+        # --- Live K6 output parsing for stage/VU info ---
+        import threading
+        import re
+        from collections import deque
+        
+        # Improved regex patterns for K6 output
+        # K6 outputs lines like: "     running (1m30s), 342/500 VUs, 12500 complete and 0 interrupted iterations"
+        # or: "✓ 342 VUs  1m30s  ████████████████████████████████▌ 90%"
+        vus_pattern = re.compile(r"(\d+)/(\d+)\s+VUs")  # Current/Target VUs
+        stage_pattern = re.compile(r"running\s+\(([^)]+)\)")  # Running time
+        progress_pattern = re.compile(r"(\d+)%")  # Progress percentage
+        simple_vus_pattern = re.compile(r"(\d+)\s+VUs")  # Simple VU count
+        
+        # Start K6 as a subprocess and stream output
+        proc = subprocess.Popen(k6_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, universal_newlines=True)
+        
+        # For progress tracking
+        total_stages = len(custom_stages) if custom_stages else 5  # Default stages count
+        current_stage = 1
+        current_vus = 0
+        target_vus = 0
+        progress_percent = 0
+        
+        # Store last 10 lines for debugging
+        last_lines = deque(maxlen=10)
+        
+        for line in proc.stdout:
+            last_lines.append(line)
+            line_stripped = line.strip()
+            
+            # Parse current/target VUs (format: "342/500 VUs")
+            vus_match = vus_pattern.search(line)
+            if vus_match:
+                current_vus = int(vus_match.group(1))
+                target_vus = int(vus_match.group(2))
+                test_status[test_id]['vus'] = current_vus
+                test_status[test_id]['target_vus'] = target_vus
+            
+            # Parse simple VU count if current/target format not found
+            elif simple_vus_pattern.search(line) and 'VUs' in line:
+                simple_match = simple_vus_pattern.search(line)
+                if simple_match and not vus_match:  # Only use if we didn't find current/target format
+                    current_vus = int(simple_match.group(1))
+                    test_status[test_id]['vus'] = current_vus
+            
+            # Parse progress percentage
+            progress_match = progress_pattern.search(line)
+            if progress_match:
+                progress_percent = int(progress_match.group(1))
+                test_status[test_id]['progress_percent'] = progress_percent
+            
+            # Parse running time for stage info
+            stage_match = stage_pattern.search(line)
+            if stage_match:
+                running_time = stage_match.group(1)
+                test_status[test_id]['running_time'] = running_time
+                test_status[test_id]['stage'] = f"Running for {running_time}"
+            
+            # Detect stage transitions by looking for specific K6 messages
+            if 'ramping up' in line_stripped.lower():
+                current_stage += 1
+                test_status[test_id]['current_stage'] = current_stage
+                test_status[test_id]['total_stages'] = total_stages
+                test_status[test_id]['stage'] = f"Stage {current_stage}/{total_stages}: Ramping up"
+            elif 'ramping down' in line_stripped.lower():
+                test_status[test_id]['stage'] = f"Stage {current_stage}/{total_stages}: Ramping down"
+            elif 'staying at' in line_stripped.lower():
+                test_status[test_id]['stage'] = f"Stage {current_stage}/{total_stages}: Steady state"
+        
+        proc.wait(timeout=300)
+        exit_code = proc.returncode
         
         # K6 returns exit code 99 when thresholds are crossed, but test completed successfully
         # K6 returns exit code 0 when test completed with all thresholds passed
         # Any other exit code indicates a real failure
-        if result.returncode != 0 and result.returncode != 99:
+        if exit_code != 0 and exit_code != 99:
             test_status[test_id]['status'] = 'failed'
-            test_status[test_id]['error'] = f"K6 test failed: {result.stderr}"
+            test_status[test_id]['error'] = f"K6 test failed. Last output: {''.join(last_lines)}"
             return
         
         # Store threshold status for the report
-        if result.returncode == 99:
+        if exit_code == 99:
             test_status[test_id]['thresholds_crossed'] = True
             test_status[test_id]['warning'] = "Some performance thresholds were exceeded during the test"
         else:
@@ -345,6 +415,160 @@ def upload_file():
     
     flash('Invalid file type. Please upload a JSON file.')
     return redirect(url_for('index'))
+
+@app.route('/upload_manual', methods=['POST'])
+def upload_manual():
+    """Handle manual configuration form submission"""
+    try:
+        # Build configuration JSON from form data
+        config = {
+            "base_url": request.form.get('base_url', '').strip(),
+            "report_title": request.form.get('report_title', 'Manual Load Test').strip(),
+            "report_subtitle": "Load test created from manual configuration",
+            "tokens": [],
+            "endpoints": []
+        }
+        
+        # Validate required fields
+        if not config["base_url"]:
+            flash('Base URL is required')
+            return redirect(url_for('index'))
+        
+        # Process tokens
+        token_names = request.form.getlist('token_name[]')
+        token_values = request.form.getlist('token_value[]')
+        
+        for name, value in zip(token_names, token_values):
+            if name.strip() and value.strip():
+                config["tokens"].append({
+                    "name": name.strip(),
+                    "token": value.strip()
+                })
+        
+        # Process endpoints
+        endpoint_names = request.form.getlist('endpoint_name[]')
+        endpoint_descriptions = request.form.getlist('endpoint_description[]')
+        endpoint_methods = request.form.getlist('endpoint_method[]')
+        endpoint_urls = request.form.getlist('endpoint_url[]')
+        endpoint_headers = request.form.getlist('endpoint_headers[]')
+        endpoint_bodies = request.form.getlist('endpoint_body[]')
+        endpoint_weights = request.form.getlist('endpoint_weight[]')
+        endpoint_thresholds = request.form.getlist('endpoint_threshold[]')
+        endpoint_think_mins = request.form.getlist('endpoint_think_min[]')
+        endpoint_think_maxs = request.form.getlist('endpoint_think_max[]')
+        
+        if not endpoint_names or not any(name.strip() for name in endpoint_names):
+            flash('At least one endpoint is required')
+            return redirect(url_for('index'))
+        
+        for i, name in enumerate(endpoint_names):
+            if not name.strip():
+                continue
+                
+            endpoint = {
+                "name": name.strip(),
+                "description": endpoint_descriptions[i].strip() if i < len(endpoint_descriptions) else "",
+                "method": endpoint_methods[i] if i < len(endpoint_methods) else "GET",
+                "url": endpoint_urls[i].strip() if i < len(endpoint_urls) else "/",
+                "headers": {},
+                "weight": 30,
+                "thinkTime": {"min": 1, "max": 3},
+                "threshold_ms": 1000
+            }
+            
+            # Parse headers JSON
+            if i < len(endpoint_headers) and endpoint_headers[i].strip():
+                try:
+                    endpoint["headers"] = json.loads(endpoint_headers[i])
+                except json.JSONDecodeError:
+                    flash(f'Invalid JSON format in headers for endpoint "{name}"')
+                    return redirect(url_for('index'))
+            
+            # Parse body JSON for POST/PUT/PATCH methods
+            if (endpoint["method"] in ["POST", "PUT", "PATCH"] and 
+                i < len(endpoint_bodies) and endpoint_bodies[i].strip()):
+                try:
+                    endpoint["body"] = json.loads(endpoint_bodies[i])
+                except json.JSONDecodeError:
+                    flash(f'Invalid JSON format in body for endpoint "{name}"')
+                    return redirect(url_for('index'))
+            
+            # Parse numeric values with defaults
+            try:
+                if i < len(endpoint_weights) and endpoint_weights[i].strip():
+                    endpoint["weight"] = int(endpoint_weights[i])
+                if i < len(endpoint_thresholds) and endpoint_thresholds[i].strip():
+                    endpoint["threshold_ms"] = int(endpoint_thresholds[i])
+                if i < len(endpoint_think_mins) and endpoint_think_mins[i].strip():
+                    endpoint["thinkTime"]["min"] = int(endpoint_think_mins[i])
+                if i < len(endpoint_think_maxs) and endpoint_think_maxs[i].strip():
+                    endpoint["thinkTime"]["max"] = int(endpoint_think_maxs[i])
+            except ValueError as e:
+                flash(f'Invalid numeric value for endpoint "{name}": {str(e)}')
+                return redirect(url_for('index'))
+            
+            config["endpoints"].append(endpoint)
+        
+        # Parse custom stages configuration if provided
+        custom_stages = None
+        stage_durations = request.form.getlist('manual_stage_duration[]')
+        stage_targets = request.form.getlist('manual_stage_target[]')
+        
+        if stage_durations and stage_targets and len(stage_durations) == len(stage_targets):
+            # Filter out empty values
+            valid_stages = []
+            for duration, target in zip(stage_durations, stage_targets):
+                if duration.strip() and target.strip():
+                    try:
+                        target_int = int(target)
+                        valid_stages.append({
+                            'duration': duration.strip(),
+                            'target': target_int
+                        })
+                    except ValueError:
+                        pass  # Skip invalid target values
+            
+            if valid_stages:
+                custom_stages = valid_stages
+        
+        # Save configuration to a temporary JSON file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"manual_config_{timestamp}.json"
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        
+        with open(filepath, 'w') as f:
+            json.dump(config, f, indent=2)
+        
+        # Validate the generated configuration
+        is_valid, message = validate_endpoints_json(filepath)
+        if not is_valid:
+            os.remove(filepath)  # Clean up invalid file
+            flash(f'Configuration validation failed: {message}')
+            return redirect(url_for('index'))
+        
+        # Generate unique test ID
+        test_id = str(uuid.uuid4())
+        
+        # Initialize test status
+        test_status[test_id] = {
+            'status': 'queued',
+            'stage': 'Initializing',
+            'filename': f'Manual Configuration ({len(config["endpoints"])} endpoints)',
+            'upload_time': datetime.now().isoformat(),
+            'custom_stages': custom_stages,
+            'config_source': 'manual'
+        }
+        
+        # Start K6 test in background thread
+        thread = threading.Thread(target=run_k6_test, args=(test_id, filepath))
+        thread.daemon = True
+        thread.start()
+        
+        return redirect(url_for('test_status_page', test_id=test_id))
+        
+    except Exception as e:
+        flash(f'Error processing manual configuration: {str(e)}')
+        return redirect(url_for('index'))
 
 @app.route('/test/<test_id>')
 def test_status_page(test_id):

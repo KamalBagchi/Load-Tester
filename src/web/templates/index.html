@@ -15,10 +15,26 @@
             </div>
         </div>
 
-        <!-- Upload Section -->
+        <!-- Configuration Options -->
         <div class="row justify-content-center mb-5">
-            <div class="col-lg-8">
-                <div class="card card-custom">
+            <div class="col-lg-10">
+                <!-- Configuration Method Selector -->
+                <div class="text-center mb-4">
+                    <div class="btn-group" role="group" aria-label="Configuration method">
+                        <input type="radio" class="btn-check" name="configMethod" id="uploadMethod" checked>
+                        <label class="btn btn-outline-primary" for="uploadMethod">
+                            <i class="fas fa-upload me-2"></i>Upload JSON File
+                        </label>
+                        
+                        <input type="radio" class="btn-check" name="configMethod" id="manualMethod">
+                        <label class="btn btn-outline-primary" for="manualMethod">
+                            <i class="fas fa-edit me-2"></i>Manual Configuration
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Upload Configuration Section -->
+                <div class="card card-custom" id="uploadSection">
                     <div class="card-body p-5">
                         <h3 class="card-title text-center mb-4">
                             <i class="fas fa-upload me-2"></i>Upload Endpoints Configuration
@@ -141,7 +157,117 @@
                             </div>
                             
                             <div class="text-center mt-4">
-                                <button type="submit" class="btn btn-success btn-custom" id="submitBtn" disabled>
+                                <button type="submit" class="btn btn-success btn-custom" id="uploadSubmitBtn" disabled>
+                                    <i class="fas fa-play me-2"></i>Start Load Test
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Manual Configuration Section -->
+                <div class="card card-custom d-none" id="manualSection">
+                    <div class="card-body p-5">
+                        <h3 class="card-title text-center mb-4">
+                            <i class="fas fa-edit me-2"></i>Manual Test Configuration
+                        </h3>
+                        
+                        <form method="POST" action="/upload_manual" id="manualForm">
+                            <!-- Basic Configuration -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Base URL <span class="text-danger">*</span></label>
+                                    <input type="url" class="form-control" name="base_url" placeholder="https://api.example.com" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Report Title</label>
+                                    <input type="text" class="form-control" name="report_title" placeholder="My Load Test" value="API Load Test">
+                                </div>
+                            </div>
+                            
+                            <!-- Authentication Tokens -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <label class="form-label mb-0">Authentication Tokens</label>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="addToken()">
+                                        <i class="fas fa-plus me-1"></i>Add Token
+                                    </button>
+                                </div>
+                                <div id="tokensContainer">
+                                    <!-- Tokens will be added dynamically -->
+                                </div>
+                            </div>
+                            
+                            <!-- Endpoints Configuration -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <label class="form-label mb-0">API Endpoints <span class="text-danger">*</span></label>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="addEndpoint()">
+                                        <i class="fas fa-plus me-1"></i>Add Endpoint
+                                    </button>
+                                </div>
+                                <div id="endpointsContainer">
+                                    <!-- Default endpoint will be added on page load -->
+                                </div>
+                            </div>
+                            
+                            <!-- Advanced Configuration -->
+                            <div class="mt-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-cogs me-2"></i>Load Test Configuration
+                                    </h5>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleManualAdvanced()">
+                                        <i class="fas fa-chevron-down me-1" id="manualAdvancedIcon"></i>
+                                        <span id="manualAdvancedText">Show Advanced</span>
+                                    </button>
+                                </div>
+                                
+                                <div id="manualAdvancedConfig" class="collapse">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="fas fa-chart-area me-2"></i>K6 Stages Configuration
+                                            </h6>
+                                            <p class="text-muted small mb-3">
+                                                Configure custom load testing stages. If not specified, default stages will be used.
+                                            </p>
+                                            
+                                            <div id="manualStagesContainer">
+                                                <div class="row mb-2">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label small">Duration</label>
+                                                        <input type="text" class="form-control form-control-sm" name="manual_stage_duration[]" placeholder="1m" value="1m">
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label small">Target Users</label>
+                                                        <input type="number" class="form-control form-control-sm" name="manual_stage_target[]" placeholder="50" value="50">
+                                                    </div>
+                                                    <div class="col-md-2 d-flex align-items-end">
+                                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeManualStage(this)" disabled>
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addManualStage()">
+                                                <i class="fas fa-plus me-1"></i>Add Stage
+                                            </button>
+                                            
+                                            <div class="mt-3">
+                                                <small class="text-muted">
+                                                    <strong>Duration examples:</strong> 30s, 1m, 2m30s, 1h<br>
+                                                    <strong>Default pattern:</strong> Ramp up → Cool down → Pause → Recovery
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-success btn-custom" id="manualSubmitBtn">
                                     <i class="fas fa-play me-2"></i>Start Load Test
                                 </button>
                             </div>
@@ -175,9 +301,9 @@
                         <div class="feature-icon">
                             <i class="fas fa-cog"></i>
                         </div>
-                        <h5 class="card-title">Easy Configuration</h5>
+                        <h5 class="card-title">Flexible Configuration</h5>
                         <p class="card-text">
-                            Simply upload your endpoints JSON file with API configurations, and our tool handles the rest automatically.
+                            Upload JSON files for complex configurations or use the manual form for quick tests. Both approaches support custom staging and authentication.
                         </p>
                     </div>
                 </div>
@@ -256,7 +382,31 @@
     const fileInput = document.getElementById('fileInput');
     const fileInfo = document.getElementById('fileInfo');
     const fileName = document.getElementById('fileName');
-    const submitBtn = document.getElementById('submitBtn');
+    const uploadSubmitBtn = document.getElementById('uploadSubmitBtn');
+    
+    // Configuration method switching
+    const uploadMethod = document.getElementById('uploadMethod');
+    const manualMethod = document.getElementById('manualMethod');
+    const uploadSection = document.getElementById('uploadSection');
+    const manualSection = document.getElementById('manualSection');
+    
+    uploadMethod.addEventListener('change', function() {
+        if (this.checked) {
+            uploadSection.classList.remove('d-none');
+            manualSection.classList.add('d-none');
+        }
+    });
+    
+    manualMethod.addEventListener('change', function() {
+        if (this.checked) {
+            manualSection.classList.remove('d-none');
+            uploadSection.classList.add('d-none');
+            // Add a default endpoint if none exist
+            if (document.querySelectorAll('#endpointsContainer .endpoint-item').length === 0) {
+                addEndpoint();
+            }
+        }
+    });
 
     // Drag and drop functionality
     uploadZone.addEventListener('dragover', (e) => {
@@ -289,13 +439,134 @@
     function showFileInfo(file) {
         fileName.textContent = file.name;
         fileInfo.classList.remove('d-none');
-        submitBtn.disabled = false;
+        uploadSubmitBtn.disabled = false;
     }
 
     function clearFile() {
         fileInput.value = '';
         fileInfo.classList.add('d-none');
-        submitBtn.disabled = true;
+        uploadSubmitBtn.disabled = true;
+    }
+
+    // Manual configuration functions
+    function addToken() {
+        const container = document.getElementById('tokensContainer');
+        const tokenDiv = document.createElement('div');
+        tokenDiv.className = 'token-item mb-3 p-3 border rounded';
+        tokenDiv.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label small">Token Name</label>
+                    <input type="text" class="form-control form-control-sm" name="token_name[]" placeholder="AUTH_TOKEN">
+                </div>
+                <div class="col-md-7">
+                    <label class="form-label small">Token Value</label>
+                    <input type="text" class="form-control form-control-sm" name="token_value[]" placeholder="Bearer your-token-here">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeToken(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(tokenDiv);
+    }
+    
+    function removeToken(button) {
+        const tokenItem = button.closest('.token-item');
+        tokenItem.remove();
+    }
+    
+    function addEndpoint() {
+        const container = document.getElementById('endpointsContainer');
+        const endpointDiv = document.createElement('div');
+        endpointDiv.className = 'endpoint-item mb-4 p-4 border rounded';
+        endpointDiv.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Endpoint Configuration</h6>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeEndpoint(this)">
+                    <i class="fas fa-trash me-1"></i>Remove
+                </button>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label small">Endpoint Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="endpoint_name[]" placeholder="USER_LIST" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small">Description</label>
+                    <input type="text" class="form-control form-control-sm" name="endpoint_description[]" placeholder="Get list of users">
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label class="form-label small">Method <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm" name="endpoint_method[]" required>
+                        <option value="GET" selected>GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                        <option value="PATCH">PATCH</option>
+                    </select>
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label small">URL Path <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" name="endpoint_url[]" placeholder="/api/v1/users" required>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label small">Headers (JSON format)</label>
+                <textarea class="form-control form-control-sm" name="endpoint_headers[]" rows="3" placeholder='{"Authorization": "&lt;AUTH_TOKEN&gt;", "Content-Type": "application/json"}'></textarea>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label small">Request Body (JSON format - for POST/PUT/PATCH)</label>
+                <textarea class="form-control form-control-sm" name="endpoint_body[]" rows="3" placeholder='{"name": "Test User", "email": "test@example.com"}'></textarea>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label small">Weight (%)</label>
+                    <input type="number" class="form-control form-control-sm" name="endpoint_weight[]" min="1" max="100" value="30">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Threshold (ms)</label>
+                    <input type="number" class="form-control form-control-sm" name="endpoint_threshold[]" min="100" value="1000">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Think Time Min (s)</label>
+                    <input type="number" class="form-control form-control-sm" name="endpoint_think_min[]" min="1" value="1">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Think Time Max (s)</label>
+                    <input type="number" class="form-control form-control-sm" name="endpoint_think_max[]" min="1" value="3">
+                </div>
+            </div>
+        `;
+        container.appendChild(endpointDiv);
+        updateEndpointRemoveButtons();
+    }
+    
+    function removeEndpoint(button) {
+        const endpointItem = button.closest('.endpoint-item');
+        endpointItem.remove();
+        updateEndpointRemoveButtons();
+    }
+    
+    function updateEndpointRemoveButtons() {
+        const endpointItems = document.querySelectorAll('#endpointsContainer .endpoint-item');
+        endpointItems.forEach((item, index) => {
+            const removeBtn = item.querySelector('.btn-outline-danger');
+            if (endpointItems.length <= 1) {
+                removeBtn.disabled = true;
+            } else {
+                removeBtn.disabled = false;
+            }
+        });
     }
 
     function downloadSample() {
@@ -362,7 +633,7 @@
         URL.revokeObjectURL(url);
     }
 
-    // Advanced configuration functions
+    // Advanced configuration functions for upload method
     function toggleAdvanced() {
         const advancedConfig = document.getElementById('advancedConfig');
         const advancedIcon = document.getElementById('advancedIcon');
@@ -408,6 +679,62 @@
 
     function updateRemoveButtons() {
         const stageRows = document.querySelectorAll('#stagesContainer .row');
+        stageRows.forEach((row, index) => {
+            const removeBtn = row.querySelector('.btn-outline-danger');
+            if (stageRows.length <= 1) {
+                removeBtn.disabled = true;
+            } else {
+                removeBtn.disabled = false;
+            }
+        });
+    }
+    
+    // Advanced configuration functions for manual method
+    function toggleManualAdvanced() {
+        const advancedConfig = document.getElementById('manualAdvancedConfig');
+        const advancedIcon = document.getElementById('manualAdvancedIcon');
+        const advancedText = document.getElementById('manualAdvancedText');
+        
+        if (advancedConfig.classList.contains('show')) {
+            advancedConfig.classList.remove('show');
+            advancedIcon.className = 'fas fa-chevron-down me-1';
+            advancedText.textContent = 'Show Advanced';
+        } else {
+            advancedConfig.classList.add('show');
+            advancedIcon.className = 'fas fa-chevron-up me-1';
+            advancedText.textContent = 'Hide Advanced';
+        }
+    }
+
+    function addManualStage() {
+        const container = document.getElementById('manualStagesContainer');
+        const stageRow = document.createElement('div');
+        stageRow.className = 'row mb-2';
+        stageRow.innerHTML = `
+            <div class="col-md-6">
+                <input type="text" class="form-control form-control-sm" name="manual_stage_duration[]" placeholder="30s">
+            </div>
+            <div class="col-md-4">
+                <input type="number" class="form-control form-control-sm" name="manual_stage_target[]" placeholder="10">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeManualStage(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(stageRow);
+        updateManualRemoveButtons();
+    }
+
+    function removeManualStage(button) {
+        const stageRow = button.closest('.row');
+        stageRow.remove();
+        updateManualRemoveButtons();
+    }
+
+    function updateManualRemoveButtons() {
+        const stageRows = document.querySelectorAll('#manualStagesContainer .row');
         stageRows.forEach((row, index) => {
             const removeBtn = row.querySelector('.btn-outline-danger');
             if (stageRows.length <= 1) {

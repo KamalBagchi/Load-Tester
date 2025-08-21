@@ -1,0 +1,179 @@
+/* Additional styles for manual configuration */
+
+.btn-check:checked + .btn {
+    background-color: #0d6efd !important;
+    border-color: transparent !important;
+    color: white !important;
+}
+
+.token-item {
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.token-item:hover {
+    background-color: #e9ecef;
+}
+
+.endpoint-item {
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.endpoint-item:hover {
+    background-color: #e9ecef;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.endpoint-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(45deg, #0d6efd, #6610f2);
+    border-radius: 2px 0 0 2px;
+}
+
+.form-control-sm, .form-select-sm {
+    font-size: 0.875rem;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* Configuration method selector */
+/* Configuration method selector */
+.btn-group .btn {
+    transition: all 0.3s ease;
+    background-color: #fff;
+    color: #0d6efd;
+    border: 1.5px solid #0d6efd;
+}
+
+.btn-group .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    background-color: #f8f9fa;
+}
+
+/* Selected button: solid blue background, no border highlight */
+.btn-check:checked + .btn {
+    background-color: #0d6efd !important;
+    border-color: transparent !important;
+    color: white !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Remove focus/active outline and border highlight on buttons */
+.btn-check:focus + .btn,
+.btn-check:focus-visible + .btn,
+.btn-group .btn:focus,
+.btn-group .btn:active,
+.btn-group .btn:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: transparent !important;
+}
+
+/* Smooth transitions for showing/hiding sections */
+#uploadSection, #manualSection {
+    transition: all 0.3s ease;
+}
+
+/* JSON textarea styling */
+textarea.form-control {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+/* Validation feedback */
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.is-valid {
+    border-color: #198754;
+}
+
+/* Card animations */
+.card-custom {
+    transition: all 0.3s ease;
+}
+
+.card-custom:hover {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+/* Button improvements */
+.btn-custom {
+    border-radius: 8px;
+    padding: 12px 30px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.btn-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+/* Advanced config toggle */
+.collapse {
+    transition: height 0.35s ease;
+}
+
+/* Stage configuration rows */
+.row.mb-2 {
+    transition: all 0.3s ease;
+}
+
+.row.mb-2:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+    border-radius: 4px;
+    padding: 8px;
+    margin: 0 -8px 8px -8px;
+}
+
+/* Remove button improvements */
+.btn-outline-danger {
+    transition: all 0.3s ease;
+}
+
+.btn-outline-danger:hover {
+    transform: scale(1.1);
+}
+
+/* Form labels */
+.form-label.small {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 4px;
+}
+
+/* Required field indicator */
+.text-danger {
+    font-weight: bold;
+}
+
+/* Better spacing for mobile */
+@media (max-width: 768px) {
+    .endpoint-item, .token-item {
+        padding: 1rem !important;
+    }
+    
+    .btn-group {
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        flex: 1;
+    }
+}

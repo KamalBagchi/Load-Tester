@@ -1,0 +1,166 @@
+{
+    "base_url": "https://beta.rexk12.ai",
+    "report_title": "Rex endpoint Report",
+    "report_subtitle": "Performance testing for REX endpoints",
+    "tokens": [
+        {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2ZTk1MjgxMjkzOTMxODlmYjYwYmE1MSIsIm5hbWUiOiJSaXNoaSBEYWthIiwiZW1haWwiOiJyaXNoaUByZXguY29tIiwic2Nob29sTmFtZSI6IjY2YmI0Nzk1NzEyMzkxYmU5Mzg0OWRiYiIsInNjaG9vbElkIjoiNjZiYjQ3OTU3MTIzOTFiZTkzODQ5ZGJiIiwic3RhdHVzIjoiQUNUSVZFIiwidHlwZSI6IlRFQUNIRVIiLCJkaXN0cmljdElkIjoiNjZiYjQ3NTc3MTIzOTFiZTkzODQ5ZDljIiwiaWF0IjoxNzU0MzA2MTE2LCJleHAiOjE3NTY4OTgxMTZ9.GHrkCxfV1dE3MkOlUJIg6nwIawnrzZ38EGolfJIypIc",
+            "name": "TEACHER_TOKEN"
+        },
+        {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY2YTRkMjc0NmFlMzRkODQ0YmZhNjA3NyIsIm5hbWUiOiJVZGRpcGFuIiwiZW1haWwiOiJ1ZGRpcGFuQGdtYWlsLmNvbSIsInN0YXR1cyI6IkFDVElWRSIsInR5cGUiOiJTVVBFUi1BRE1JTiIsImlhdCI6MTc1NDI5NTQyNCwiZXhwIjoxNzU2ODg3NDI0fQ.ViV88mgP1_OXH448wurJ14UNrrqXOcYYEaILRlhSNEA",
+            "name": "ADMIN_TOKEN"
+        },
+        {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OTA5ZDgwMjc1ODAzMjA0YTE4ZDA3OSIsImVtYWlsIjoid2Fua2ljaGVycmFAZ21haWwuY29tIiwibmFtZSI6IldhbmtpIENoZXJyYSIsImdyYWRlSWQiOiI2NWRmMTZjZjUzNzU3MWUyYWJkMmJmZGIiLCJzZWN0aW9uIjoiNjZlOTU0OWEyOTM5MzE4OWZiNjBiYmM3Iiwic2Nob29sIjoiNjZiYjQ3OTU3MTIzOTFiZTkzODQ5ZGJiIiwiZGlzdHJpY3QiOiI2NmJiNDc1NzcxMjM5MWJlOTM4NDlkOWMiLCJzdGF0dXMiOiJBQ1RJVkUiLCJncmFkZSI6IkdyYWRlIDEiLCJpYXQiOjE3NTU3NTM4NDcsImV4cCI6MTc1NjM1ODY0N30.ay09dEEn-nZlech6MxDwde3jkvCsWjUxjAKkRXM9ZV0",
+            "name": "STUDENT_TOKEN"
+        }
+    ],
+    "endpoints": [
+        {
+            "name": "TEACHER_DASHBOARD",
+            "description": "Teacher dashboard information",
+            "method": "POST",
+            "url": "/api/v1/teacher/dashboard/info",
+            "body": {
+                "courseId": ""
+            },
+            "headers": {
+                "Authorization": "<ADMIN_TOKEN>",
+                "Content-Type": "application/json"
+            },
+            "weight": 25,
+            "thinkTime": {
+                "min": 1,
+                "max": 4
+            },
+            "threshold_ms": 1500
+        },
+        {
+            "name": "STUDENT_DETAILS",
+            "description": "Get specific student details",
+            "method": "GET",
+            "url": "/api/v1/teacher/student/details/get/6867834e9ee745f3240f5ee5",
+            "body": null,
+            "headers": {
+                "Authorization": "<ADMIN_TOKEN>",
+                "Content-Type": "application/json"
+            },
+            "weight": 10,
+            "thinkTime": {
+                "min": 2,
+                "max": 6
+            },
+            "threshold_ms": 1500
+        },
+        {
+            "name": "STUDENT_LIST",
+            "description": "Get all students list",
+            "method": "POST",
+            "url": "/api/v1/teacher/student/get/all",
+            "body": {
+                "page": 0,
+                "pageSize": 500
+            },
+            "headers": {
+                "Authorization": "<TEACHER_TOKEN>",
+                "Content-Type": "application/json",
+                "schoolid": "66bb4795712391be93849dbb"
+            },
+            "weight": 20,
+            "thinkTime": {
+                "min": 2,
+                "max": 5
+            },
+            "threshold_ms": 2500
+        },
+        {
+            "name": "COURSE_CONTENT",
+            "description": "Get course content (admin)",
+            "method": "GET",
+            "url": "/api/v1/admin/course/get/content/6596436834e00e06462ae5fc",
+            "body": null,
+            "headers": {
+                "Authorization": "<ADMIN_TOKEN>",
+                "Content-Type": "application/json"
+            },
+            "weight": 2,
+            "thinkTime": {
+                "min": 1.5,
+                "max": 4
+            },
+            "threshold_ms": 5000
+        },
+        {
+            "name": "All Courses",
+            "description": "Get courses (admin)",
+            "method": "POST",
+            "url": "/api/v1/admin/course/get/courses",
+            "body": {
+                "limit": 100,
+                "skip": 0 
+            },
+            "headers": {
+                "Authorization": "<ADMIN_TOKEN>",
+                "Content-Type": "application/json"
+            },
+            "weight": 1,
+            "thinkTime": {
+                "min": 1.5,
+                "max": 4
+            },
+            "threshold_ms": 5000
+        },
+        {
+            "name": "STUDENT_MY_COURSES",
+            "description": "Get student's courses",
+            "method": "GET",
+            "url": "/student/api/v1/student/mycourses/get",
+            "body": null,
+            "headers": {
+                "Authorization": "<STUDENT_TOKEN>",
+                "Content-Type": "application/json"
+            },
+            "weight": 30,
+            "thinkTime": {
+                "min": 1,
+                "max": 3
+            },
+            "threshold_ms": 2000
+        },
+        {
+            "name": "STUDENT_COURSE_PROGRESS",
+            "description": "Get student's course progress",
+            "method": "GET",
+            "url": "/student/api/v1/student/course/progress/66bccc015f819309a54b0a62",
+            "body": null,
+            "headers": {
+                "Authorization": "<STUDENT_TOKEN>",
+                "Content-Type": "application/json"
+            },
+            "weight": 8,
+            "thinkTime": {
+                "min": 1,
+                "max": 3
+            },
+            "threshold_ms": 2000
+        },
+        {
+            "name": "STUDENT_SECTION_PROGRESS",
+            "description": "Get student's section progress",
+            "method": "GET",
+            "url": "/student/api/v1/student/section/progress/66bccc015f819309a54b0a62",
+            "body": null,
+            "headers": {
+                "Authorization": "<STUDENT_TOKEN>",
+                "Content-Type": "application/json"
+            },
+            "weight": 4,
+            "thinkTime": {
+                "min": 1,
+                "max": 3
+            },
+            "threshold_ms": 2000
+        }
+    ]
+}

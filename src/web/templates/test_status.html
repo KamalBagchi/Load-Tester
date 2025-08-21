@@ -17,16 +17,17 @@
                             <p id="statusMessage" class="text-muted">Please wait while we process your test...</p>
                         </div>
 
-                        <!-- Progress Section -->
-                        <div id="progressSection" class="mb-4">
-                            <div class="progress mb-3" style="height: 20px;">
-                                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                                     role="progressbar" style="width: 25%"></div>
-                            </div>
-                            <p id="currentStage" class="text-center text-muted">Initializing...</p>
-                        </div>
-
-                        <!-- Test Info -->
+        <!-- Progress Section -->
+        <div id="progressSection" class="mb-4">
+            <div class="progress mb-3" style="height: 25px; position: relative;">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 25%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;"></div>
+            </div>
+            <div class="d-flex justify-content-center align-items-center flex-wrap">
+                <span id="currentStage" class="text-muted me-3">Initializing...</span>
+                <span id="currentVUs" class="badge bg-info text-dark d-none"></span>
+            </div>
+        </div>                        <!-- Test Info -->
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <strong>Test ID:</strong>
@@ -158,7 +159,7 @@
             icon: 'fas fa-spinner fa-spin fa-3x text-primary',
             title: 'Running Load Test',
             message: 'Your test is currently running. This may take a few minutes...',
-            progress: 50,
+            progress: 0,
             badge: 'bg-primary'
         },
         'completed': {
@@ -185,14 +186,44 @@
         document.getElementById('statusTitle').textContent = config.title;
         document.getElementById('statusMessage').textContent = config.message;
         
-        // Update progress
+        // Update progress bar - use actual progress if available, otherwise start at 0%
         const progressBar = document.getElementById('progressBar');
-        progressBar.style.width = config.progress + '%';
-        progressBar.setAttribute('aria-valuenow', config.progress);
+        let progressValue = 0;  // Default to 0% instead of config.progress
         
-        // Update stage
+        // Use actual progress percentage if available from K6 output
+        if (typeof data.progress_percent === 'number') {
+            progressValue = data.progress_percent;
+        } else if (data.current_stage && data.total_stages) {
+            // Calculate progress based on current stage
+            progressValue = Math.round((data.current_stage / data.total_stages) * 100);
+        } else if (data.status === 'completed') {
+            // Only use 100% for completed status
+            progressValue = 100;
+        } else if (data.status === 'queued') {
+            // Small progress for queued status to show activity
+            progressValue = 5;
+        }
+        
+        progressBar.style.width = progressValue + '%';
+        progressBar.setAttribute('aria-valuenow', progressValue);
+        progressBar.textContent = progressValue + '%';
+        
+        // Update stage and VUs
         if (data.stage) {
             document.getElementById('currentStage').textContent = data.stage;
+        }
+        
+        // Show current VUs vs target VUs if available
+        const vuElem = document.getElementById('currentVUs');
+        if (typeof data.vus === 'number' && data.vus > 0) {
+            if (typeof data.target_vus === 'number') {
+                vuElem.textContent = `${data.vus}/${data.target_vus} VUs`;
+            } else {
+                vuElem.textContent = `${data.vus} VUs`;
+            }
+            vuElem.classList.remove('d-none');
+        } else {
+            vuElem.classList.add('d-none');
         }
         
         // Update status badge
