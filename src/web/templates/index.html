@@ -73,6 +73,76 @@
                                     #manualRateStagesSection .card {
                                         width: 100%;
                                     }
+
+                                    /* Rate Control Tab Content Positioning */
+                                    .rate-control-content {
+                                        min-height: 200px; /* Reserve consistent space */
+                                        position: relative;
+                                    }
+
+                                    /* Both tab content areas should occupy same space */
+                                    .constant-rate-content,
+                                    .ramping-stages-content {
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        width: 100%;
+                                        opacity: 0;
+                                        visibility: hidden;
+                                        transition: opacity 0.2s ease;
+                                    }
+
+                                    /* Active tab content */
+                                    .constant-rate-content.active,
+                                    .ramping-stages-content.active {
+                                        opacity: 1;
+                                        visibility: visible;
+                                        position: static; /* Return to normal flow when active */
+                                    }
+
+                                    /* Remove any margins that create gaps */
+                                    .ramping-stages-configuration {
+                                        margin-top: 0 !important;
+                                        padding-top: 0 !important;
+                                    }
+
+                                    /* Manual rate control content positioning */
+                                    .manual-rate-control-content {
+                                        min-height: 200px;
+                                        position: relative;
+                                    }
+
+                                    .manual-constant-rate-content,
+                                    .manual-ramping-stages-content {
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        width: 100%;
+                                        opacity: 0;
+                                        visibility: hidden;
+                                        transition: opacity 0.2s ease;
+                                    }
+
+                                    .manual-constant-rate-content.active,
+                                    .manual-ramping-stages-content.active {
+                                        opacity: 1;
+                                        visibility: visible;
+                                        position: static;
+                                    }
+
+                                    /* Manual mode specific - handle constant settings within the card */
+                                    #manualConstantSettings {
+                                        opacity: 1;
+                                        visibility: visible;
+                                        transition: opacity 0.2s ease;
+                                    }
+
+                                    #manualConstantSettings:not(.active) {
+                                        opacity: 0;
+                                        visibility: hidden;
+                                        height: 0;
+                                        overflow: hidden;
+                                    }
                                 </style>
 
                                 <div class="mode-grid">
@@ -194,35 +264,38 @@
                                                     </label>
                                                 </div>
                                                 
-                                                <!-- Constant Rate Settings -->
-                                                <div id="constantSettings">
-                                                    <div class="mb-3">
-                                                        <label for="target_rate" class="form-label">Requests Per Second (RPS)</label>
-                                                        <input type="number" class="form-control" id="target_rate" name="target_rate" value="50" min="1" max="50000">
-                                                        <div class="form-text">
-                                                            <strong>Target completed requests per second</strong> (max: 50,000)<br>
-                                                            <small class="text-info">
-                                                                <i class="fas fa-info-circle"></i> Actual rate depends on response times. 
-                                                                Slow responses = fewer completed requests. Increase VUs if target isn't met.
-                                                            </small>
+                                                <!-- Content container with consistent positioning -->
+                                                <div class="rate-control-content">
+                                                    <!-- Constant Rate Settings -->
+                                                    <div id="constantSettings" class="constant-rate-content active">
+                                                        <div class="mb-3">
+                                                            <label for="target_rate" class="form-label">Requests Per Second (RPS)</label>
+                                                            <input type="number" class="form-control" id="target_rate" name="target_rate" value="50" min="1" max="50000">
+                                                            <div class="form-text">
+                                                                <strong>Target completed requests per second</strong> (max: 50,000)<br>
+                                                                <small class="text-info">
+                                                                    <i class="fas fa-info-circle"></i> Actual rate depends on response times. 
+                                                                    Slow responses = fewer completed requests. Increase VUs if target isn't met.
+                                                                </small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="duration" class="form-label">Test Duration</label>
+                                                            <select class="form-control" id="duration" name="duration">
+                                                                <option value="30s">30 seconds</option>
+                                                                <option value="1m">1 minute</option>
+                                                                <option value="2m">2 minutes</option>
+                                                                <option value="5m" selected>5 minutes</option>
+                                                                <option value="10m">10 minutes</option>
+                                                            </select>
                                                         </div>
                                                     </div>
-                                                    <div class="mb-3">
-                                                        <label for="duration" class="form-label">Test Duration</label>
-                                                        <select class="form-control" id="duration" name="duration">
-                                                            <option value="30s">30 seconds</option>
-                                                            <option value="1m">1 minute</option>
-                                                            <option value="2m">2 minutes</option>
-                                                            <option value="5m" selected>5 minutes</option>
-                                                            <option value="10m">10 minutes</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                
-                                                <!-- Ramping Stages Settings -->
-                                                <div id="rampingSettings" style="display: none;">
-                                                    <p class="text-muted">Define how your request rate should change over time (max RPS per stage: 50,000):</p>
-                                                    <div id="rateStagesContainer">
+                                                    
+                                                    <!-- Ramping Stages Settings -->
+                                                    <div id="rampingSettings" class="ramping-stages-content">
+                                                        <div class="ramping-stages-configuration">
+                                                            <p class="text-muted">Define how your request rate should change over time (max RPS per stage: 50,000):</p>
+                                                            <div id="rateStagesContainer">
                                                         <!-- Default stages -->
                                                         <div class="stage-item mb-3 p-3 bg-light rounded">
                                                             <div class="row align-items-end">
@@ -282,6 +355,8 @@
                                                     <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addRateStage()">
                                                         <i class="fas fa-plus me-1"></i>Add Stage
                                                     </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -405,18 +480,20 @@
                                                     </label>
                                                 </div>
                                                 
-                                                <!-- Constant Rate Settings -->
-                                                <div id="manualConstantSettings">
-                                                    <div class="mb-3">
-                                                        <label for="manual_target_rate" class="form-label">Requests Per Second (RPS)</label>
-                                                        <input type="number" class="form-control" id="manual_target_rate" name="target_rate" value="50" min="1" max="50000">
-                                                        <div class="form-text">
-                                                            <strong>Target completed requests per second</strong> (max: 50,000)<br>
-                                                            <small class="text-info">
-                                                                <i class="fas fa-info-circle"></i> Actual rate depends on response times. 
-                                                                Slow responses = fewer completed requests. Increase VUs if target isn't met.
-                                                            </small>
-                                                        </div>
+                                                <!-- Content container with consistent positioning -->
+                                                <div class="manual-rate-control-content">
+                                                    <!-- Constant Rate Settings -->
+                                                    <div id="manualConstantSettings" class="manual-constant-rate-content active">
+                                                        <div class="mb-3">
+                                                            <label for="manual_target_rate" class="form-label">Requests Per Second (RPS)</label>
+                                                            <input type="number" class="form-control" id="manual_target_rate" name="target_rate" value="50" min="1" max="50000">
+                                                            <div class="form-text">
+                                                                <strong>Target completed requests per second</strong> (max: 50,000)<br>
+                                                                <small class="text-info">
+                                                                    <i class="fas fa-info-circle"></i> Actual rate depends on response times. 
+                                                                    Slow responses = fewer completed requests. Increase VUs if target isn't met.
+                                                                </small>
+                                                            </div>
                                                     </div>
                                                     <div class="mb-3">
                                                         <label for="manual_duration" class="form-label">Test Duration</label>
@@ -428,6 +505,7 @@
                                                             <option value="10m">10 minutes</option>
                                                         </select>
                                                     </div>
+                                                </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1324,11 +1402,13 @@
             const constantSettings = document.getElementById('constantSettings');
             
             if (this.value === 'ramping') {
-                rampingSettings.style.display = 'block';
-                constantSettings.style.display = 'none';
+                // Remove active class from constant and add to ramping
+                constantSettings.classList.remove('active');
+                rampingSettings.classList.add('active');
             } else {
-                rampingSettings.style.display = 'none';
-                constantSettings.style.display = 'block';
+                // Remove active class from ramping and add to constant
+                rampingSettings.classList.remove('active');
+                constantSettings.classList.add('active');
             }
         });
     });
@@ -1370,11 +1450,15 @@
             const constantSettings = document.getElementById('manualConstantSettings');
             
             if (this.value === 'ramping') {
+                // Show ramping stages section
                 stagesSection.style.display = 'block';
-                constantSettings.style.display = 'none';
+                // Hide constant settings within the card
+                constantSettings.classList.remove('active');
             } else {
+                // Hide ramping stages section
                 stagesSection.style.display = 'none';
-                constantSettings.style.display = 'block';
+                // Show constant settings within the card
+                constantSettings.classList.add('active');
             }
         });
     });
