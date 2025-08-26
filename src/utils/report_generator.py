@@ -430,7 +430,6 @@ def generate_html_report_with_charts(stats, output_file, routes_config=None):
                     <th>Threshold</th>
                     <th>Min/Max</th>
                     <th>Success Rate</th>
-                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -447,31 +446,18 @@ def generate_html_report_with_charts(stats, output_file, routes_config=None):
             threshold = data.get('threshold')
             threshold_passed = data.get('threshold_passed', True)
             
-            # Determine status based on success rate and threshold compliance
-            if success_rate >= 95 and threshold_passed:
-                status_class = 'success'
-                status_text = '✅ Excellent'
-            elif success_rate >= 90 and threshold_passed:
-                status_class = 'warning' 
-                status_text = '⚠️ Good'
-            else:
-                status_class = 'danger'
-                status_text = '❌ Needs Attention'
-            
             # Threshold display
             threshold_display = f"{threshold}ms" if threshold else "N/A"
-            threshold_class = 'success' if threshold_passed else 'danger'
             
             html += f"""
                 <tr>
                     <td><strong>{endpoint}</strong></td>
                     <td>{data['count']:,}</td>
                     <td>{avg_time:.1f}ms</td>
-                    <td class="{threshold_class}">{p95_time:.1f}ms</td>
+                    <td>{p95_time:.1f}ms</td>
                     <td>{threshold_display}</td>
                     <td>{min_time:.1f}ms / {max_time:.1f}ms</td>
-                    <td class="{status_class}">{success_rate:.1f}%</td>
-                    <td class="{status_class}">{status_text}</td>
+                    <td>{success_rate:.1f}%</td>
                 </tr>
             """
     

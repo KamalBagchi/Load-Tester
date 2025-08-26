@@ -1,6 +1,6 @@
 # 🚀 K6 Load Testing Tool
 
-A comprehensive, professional-grade web-based load testing platform built with K6, Flask, and modern web technologies. Generate detailed performance reports with interactive charts, real-time monitoring, and customizable test scenarios.
+A comprehensive web-based load testing platform built with K6, Flask, and modern web technologies. Features standard Virtual User Control and Simple Rate Control modes for effective performance testing with detailed interactive reports.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -12,7 +12,7 @@ A comprehensive, professional-grade web-based load testing platform built with K
 ### 🌐 **Web-Based Interface**
 - Intuitive drag-and-drop file upload
 - Real-time test progress monitoring
-- Advanced configuration options with expandable UI
+- Configuration options with expandable UI
 - Responsive design for all devices
 
 ### 📊 **Interactive Reports**
@@ -21,11 +21,13 @@ A comprehensive, professional-grade web-based load testing platform built with K
 - **Export capabilities**: HTML reports with embedded charts and raw JSON data
 - **Performance insights**: Endpoint-specific metrics and recommendations
 
-### ⚡ **Advanced Load Testing**
+### ⚡ **Load Testing Capabilities**
+- **Dual Testing Methods**: Virtual User Control and Simple Rate Control
 - **Custom test stages**: Configure ramp-up, steady state, and ramp-down phases
 - **Multiple authentication**: Support for different user types with token rotation
 - **Weighted endpoints**: Realistic traffic distribution across API endpoints
 - **Think time simulation**: Configurable delays between requests
+- **Rate control**: Basic requests-per-second targeting for capacity planning
 
 ### 🔧 **Flexible Configuration**
 - **JSON-based setup**: Easy endpoint configuration with validation
@@ -48,7 +50,7 @@ K6-Load-Testing/
 │   ├── 📊 results/            # Raw K6 test results (JSON)
 │   └── 📋 reports/            # Generated HTML reports with charts
 ├── 📁 scripts/                # Automation and utility scripts
-│   ├── 🚀 run_tests.sh       # Advanced test execution with specific endpoints
+│   ├── 🚀 run_tests.sh       # Standard test execution with specific endpoints
 │   ├── ⚡ quick_test.sh       # Quick test with latest uploaded file
 │   └── 🖥️  start_server.sh    # Web server with auto-restart and validation
 ├── 📁 src/                    # Source code and application logic
@@ -127,7 +129,7 @@ K6-Load-Testing/
    ```
    You'll see a modern web interface with:
    - 📤 Drag & drop file upload
-   - ⚙️ Advanced test configuration options
+   - ⚙️ Test configuration options
    - 📊 Real-time test monitoring
 
 3. **🧪 Run Your First Test**
@@ -142,11 +144,13 @@ K6-Load-Testing/
 If you prefer command line or have existing endpoint files:
 
 ```bash
-# Quick test with latest uploaded file
+# Virtual User Control (VU-based) - Traditional load testing
 ./scripts/quick_test.sh
-
-# Test with specific file
 ./scripts/run_tests.sh data/uploads/your-endpoints.json
+
+# Request Rate Control (RPS-based) - Capacity testing
+./scripts/run_rate_control.sh --type constant --rate 50 --duration 5m
+./scripts/run_rate_control.sh --type ramping --max-vus 500
 ```
 
 ## 📋 Detailed Usage
@@ -167,7 +171,7 @@ If you prefer command line or have existing endpoint files:
 
 3. **Configure your test**
    - **Upload**: Drag and drop your `endpoints.json` file
-   - **Advanced Settings**: Click "Show Advanced" to configure custom test stages
+   - **Configuration Settings**: Click "Show Advanced" to configure custom test stages
    - **Test Stages**: Set duration and target users for each phase
      - Stage 1: `1m` → `0 users` (Initialization)
      - Stage 2: `10s` → `10 users` (Ramp-up)
@@ -182,19 +186,61 @@ If you prefer command line or have existing endpoint files:
 
 #### Method 2: Command Line
 
+**Virtual User Control (Traditional)**
 ```bash
 # Quick test with latest uploaded endpoints file
 ./scripts/quick_test.sh
 
 # Run test with specific endpoints file
 ./scripts/run_tests.sh data/uploads/your-endpoints.json
+```
 
+**Request Rate Control (Capacity Testing)**
+```bash
+# Constant rate testing
+./scripts/run_rate_control.sh --type constant --rate 50 --duration 5m
+./scripts/run_rate_control.sh --rate 100 --duration 10m --max-vus 300
+
+# Ramping rate testing
+./scripts/run_rate_control.sh --type ramping --max-vus 500
+
+# View help for more options
+./scripts/run_rate_control.sh --help
+```
+
+**Report Generation**
+```bash
 # Generate reports from existing results
 python src/utils/report_generator.py data/results/your-test-results.json
 
 # Start the web server manually
 ./scripts/start_server.sh
 ```
+
+## 🎯 Testing Methods
+
+This platform supports **two distinct load testing approaches** to meet different testing objectives:
+
+### 1. Virtual User Control (VU-based) 
+**Best for**: User experience testing, realistic user behavior simulation
+- Controls the number of **virtual users** making requests
+- Each user follows realistic patterns with think times
+- Request rate varies based on system performance
+- More realistic user simulation
+
+### 2. Request Rate Control (RPS-based)
+**Best for**: Capacity planning, SLA validation, API throughput testing  
+- Controls **requests per second** directly
+- K6 automatically scales virtual users to maintain target rate
+- Consistent load regardless of response times
+- Perfect for capacity and performance testing
+
+| Method | Controls | Request Rate | Best For |
+|--------|----------|--------------|----------|
+| Virtual User | # of Users | Variable | User Experience |
+| Rate Control | Requests/sec | Fixed | Capacity Planning |
+
+📚 **Detailed comparison**: See [docs/TESTING_METHODS.md](docs/TESTING_METHODS.md)
 
 ## 📋 Configuration Format
 
@@ -287,7 +333,7 @@ python src/utils/report_generator.py data/results/your-test-results.json
 
 The project includes three powerful automation scripts located in the `scripts/` directory:
 
-### 🚀 **`run_tests.sh`** - Advanced Test Execution
+### 🚀 **`run_tests.sh`** - Standard Test Execution
 
 **Purpose**: Execute K6 load tests with specific endpoint configurations and generate comprehensive reports.
 
@@ -507,7 +553,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 - **Quick Fix**: Run `./scripts/start_server.sh` to install/update dependencies
 
 **Q: Custom stages not applying**
-- **Solution**: Ensure you're using the web interface advanced settings to configure stages
+- **Solution**: Ensure you're using the web interface configuration settings to configure stages
 - **Alternative**: Use `./scripts/run_tests.sh` with properly configured endpoints file
 
 **Q: Script permission denied**
