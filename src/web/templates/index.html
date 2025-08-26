@@ -12,26 +12,535 @@
                 <p class="lead mb-4">
                     Upload your endpoints JSON file and generate comprehensive load testing reports with interactive charts and detailed performance analytics.
                 </p>
+                
+                <!-- Testing Mode Selection -->
+                <div class="row justify-content-center mt-4">
+                    <div class="col-md-10">
+                        <div class="card bg-white bg-opacity-10 border-0">
+                            <div class="card-body">
+                                <h5 class="text-white mb-3">Choose Testing Mode</h5>
+
+                                <style>
+                                    /* Scoped styles for the testing mode cards */
+                                    .mode-grid { display: flex; gap: 1rem; align-items: stretch; }
+                                    .mode-card {
+                                        flex: 1 1 0;
+                                        min-height: 120px;
+                                        border-radius: .5rem;
+                                        padding: 1rem;
+                                        transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease;
+                                        cursor: pointer;
+                                        text-decoration: none;
+                                        color: inherit;
+                                    }
+                                    .mode-card:focus { outline: 3px solid rgba(255,255,255,.12); outline-offset: 2px; }
+                                    .mode-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.25); }
+                                    .mode-card .mode-icon { font-size: 1.6rem; }
+                                    .mode-card .mode-title { font-weight: 700; }
+                                    .mode-card .mode-desc { font-size: .9rem; }
+                                    .mode-badge { font-size: .7rem; padding: .25rem .5rem; border-radius: .4rem; }
+                                    
+                                    /* Rate control submit button fixes */
+                                    #rateUploadSubmitBtn, #rateManualSubmitBtn {
+                                        display: inline-block !important;
+                                        visibility: visible !important;
+                                        opacity: 1 !important;
+                                        position: relative !important;
+                                        z-index: 10;
+                                    }
+                                    
+                                    /* Ensure submit button is always visible in manual mode */
+                                    #rateManualSection .text-center {
+                                        display: block !important;
+                                        margin-top: 2rem !important;
+                                    }
+                                    
+                                    /* Stage alignment improvements */
+                                    .stage-item .row.align-items-end {
+                                        align-items: flex-end !important;
+                                    }
+                                    
+                                    .stage-item .form-label.small {
+                                        margin-bottom: 0.25rem !important;
+                                        font-weight: 500;
+                                    }
+                                    
+                                    /* Manual mode specific fixes */
+                                    #manualRateStagesSection {
+                                        margin-bottom: 1rem !important;
+                                    }
+                                    
+                                    #manualRateStagesSection .card {
+                                        width: 100%;
+                                    }
+                                </style>
+
+                                <div class="mode-grid">
+                                    <!-- Standard Load Testing -->
+                                    <a href="/?mode=standard" class="mode-card btn {% if active_mode != 'rate_control' %}btn-primary text-white{% else %}btn-light{% endif %} d-flex flex-column justify-content-center align-items-start text-start"
+                                       title="Standard VU-based load tests">
+                                        <div class="d-flex w-100 justify-content-between align-items-start">
+                                            <div>
+                                                <i class="fas fa-users mode-icon {% if active_mode != 'rate_control' %}text-white{% else %}text-primary{% endif %} mb-2"></i>
+                                                <div class="mode-title">Standard Load Testing</div>
+                                                <div class="{% if active_mode != 'rate_control' %}text-white-50{% else %}text-muted{% endif %} mode-desc">Virtual User based testing — ideal for user-behavior simulation</div>
+                                            </div>
+                                            <div class="text-end">
+                                                {% if active_mode != 'rate_control' %}
+                                                    <span class="badge bg-light text-primary mode-badge">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-transparent border text-muted mode-badge">VU Mode</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </a>
+
+                                    <!-- Simple Rate Control -->
+                                    <a href="/?mode=rate_control" class="mode-card btn {% if active_mode == 'rate_control' %}btn-success text-white{% else %}btn-light{% endif %} d-flex flex-column justify-content-center align-items-start text-start"
+                                       title="Go to Simple Rate Control flow">
+                                        <div class="d-flex w-100 justify-content-between align-items-start">
+                                            <div>
+                                                <i class="fas fa-tachometer-alt mode-icon {% if active_mode == 'rate_control' %}text-white{% else %}text-success{% endif %} mb-2"></i>
+                                                <div class="mode-title">Simple Rate Control</div>
+                                                <div class="{% if active_mode == 'rate_control' %}text-white-50{% else %}text-muted{% endif %} mode-desc">JSON → Rate → Report — quick, predictable rate-based tests</div>
+                                            </div>
+                                            <div class="text-end">
+                                                {% if active_mode == 'rate_control' %}
+                                                    <span class="badge bg-light text-success mode-badge">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-transparent border text-success mode-badge">Recommended</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Configuration Options -->
         <div class="row justify-content-center mb-5">
             <div class="col-lg-10">
-                <!-- Configuration Method Selector -->
-                <div class="text-center mb-4">
-                    <div class="btn-group" role="group" aria-label="Configuration method">
-                        <input type="radio" class="btn-check" name="configMethod" id="uploadMethod" checked>
-                        <label class="btn btn-outline-primary" for="uploadMethod">
-                            <i class="fas fa-upload me-2"></i>Upload JSON File
-                        </label>
-                        
-                        <input type="radio" class="btn-check" name="configMethod" id="manualMethod">
-                        <label class="btn btn-outline-primary" for="manualMethod">
-                            <i class="fas fa-edit me-2"></i>Manual Configuration
-                        </label>
+                {% if active_mode == 'rate_control' %}
+                    <!-- Rate Control Mode Configuration -->
+                    <!-- Configuration Method Selector -->
+                    <div class="text-center mb-4">
+                        <div class="btn-group" role="group" aria-label="Configuration method">
+                            <input type="radio" class="btn-check" name="rateConfigMethod" id="rateUploadMethod" checked>
+                            <label class="btn btn-outline-primary" for="rateUploadMethod">
+                                <i class="fas fa-upload me-2"></i>Upload JSON File
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="rateConfigMethod" id="rateManualMethod">
+                            <label class="btn btn-outline-primary" for="rateManualMethod">
+                                <i class="fas fa-edit me-2"></i>Manual Configuration
+                            </label>
+                        </div>
                     </div>
-                </div>
+                    
+                    <!-- Upload Configuration Section -->
+                    <div class="card card-custom" id="rateUploadSection">
+                        <div class="card-body p-5">
+                            <h3 class="card-title text-center mb-4">
+                                <i class="fas fa-tachometer-alt me-2"></i>Simple Rate Control Testing
+                            </h3>
+                            <p class="text-center text-muted mb-4">Upload JSON → Set Rate/Stages → Get Report</p>
+                            
+                            <form action="{{ url_for('upload_simple_rate_control') }}" method="post" enctype="multipart/form-data" id="rateForm">
+                                <div class="row">
+                                    <!-- File Upload -->
+                                    <div class="col-md-12 mb-4">
+                                        <div class="card">
+                                            <div class="card-header bg-primary text-white">
+                                                <h5 class="mb-0"><i class="fas fa-upload me-2"></i>1. Upload Your Endpoints JSON</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="upload-zone" onclick="document.getElementById('rateFile').click()">
+                                                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                                    <h5 class="text-muted mb-3">Drop your JSON file here or click to browse</h5>
+                                                    <p class="text-muted">Supports the same JSON format you're already using</p>
+                                                </div>
+                                                <input type="file" id="rateFile" name="file" accept=".json" class="d-none" required>
+                                                <div id="rateFileInfo" class="mt-3 d-none">
+                                                    <div class="alert alert-success">
+                                                        <i class="fas fa-check-circle me-2"></i>
+                                                        <span id="rateFileName"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Rate Configuration -->
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card">
+                                            <div class="card-header bg-success text-white">
+                                                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>2. Choose Rate Type</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="btn-group w-100 mb-3" role="group">
+                                                    <input type="radio" class="btn-check" name="rate_type" id="constant" value="constant" checked>
+                                                    <label class="btn btn-outline-primary" for="constant">
+                                                        <i class="fas fa-minus me-1"></i>Constant Rate
+                                                    </label>
+                                                    
+                                                    <input type="radio" class="btn-check" name="rate_type" id="ramping" value="ramping">
+                                                    <label class="btn btn-outline-primary" for="ramping">
+                                                        <i class="fas fa-chart-line me-1"></i>Ramping Stages
+                                                    </label>
+                                                </div>
+                                                
+                                                <!-- Constant Rate Settings -->
+                                                <div id="constantSettings">
+                                                    <div class="mb-3">
+                                                        <label for="target_rate" class="form-label">Requests Per Second (RPS)</label>
+                                                        <input type="number" class="form-control" id="target_rate" name="target_rate" value="50" min="1" max="50000">
+                                                        <div class="form-text">
+                                                            <strong>Target completed requests per second</strong> (max: 50,000)<br>
+                                                            <small class="text-info">
+                                                                <i class="fas fa-info-circle"></i> Actual rate depends on response times. 
+                                                                Slow responses = fewer completed requests. Increase VUs if target isn't met.
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="duration" class="form-label">Test Duration</label>
+                                                        <select class="form-control" id="duration" name="duration">
+                                                            <option value="30s">30 seconds</option>
+                                                            <option value="1m">1 minute</option>
+                                                            <option value="2m">2 minutes</option>
+                                                            <option value="5m" selected>5 minutes</option>
+                                                            <option value="10m">10 minutes</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Ramping Stages Settings -->
+                                                <div id="rampingSettings" style="display: none;">
+                                                    <p class="text-muted">Define how your request rate should change over time (max RPS per stage: 50,000):</p>
+                                                    <div id="rateStagesContainer">
+                                                        <!-- Default stages -->
+                                                        <div class="stage-item mb-3 p-3 bg-light rounded">
+                                                            <div class="row align-items-end">
+                                                                <div class="col-md-5">
+                                                                    <label class="form-label small mb-1">Duration</label>
+                                                                    <input type="text" class="form-control" name="stage_duration[]" placeholder="30s" value="30s">
+                                                                </div>
+                                                                <div class="col-md-5">
+                                                                    <label class="form-label small mb-1">Target RPS</label>
+                                                                    <input type="number" class="form-control" name="stage_target[]" placeholder="20" value="20">
+                                                                </div>
+                                                                <div class="col-md-2 text-end">
+                                                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRateStage(this)" disabled>
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="stage-item mb-3 p-3 bg-light rounded">
+                                                            <div class="row align-items-end">
+                                                                <div class="col-md-5">
+                                                                    <label class="form-label small mb-1">Duration</label>
+                                                                    <input type="text" class="form-control" name="stage_duration[]" placeholder="2m" value="2m">
+                                                                </div>
+                                                                <div class="col-md-5">
+                                                                    <label class="form-label small mb-1">Target RPS</label>
+                                                                    <input type="number" class="form-control" name="stage_target[]" placeholder="100" value="100">
+                                                                </div>
+                                                                <div class="col-md-2 text-end">
+                                                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRateStage(this)">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="stage-item mb-3 p-3 bg-light rounded">
+                                                            <div class="row align-items-end">
+                                                                <div class="col-md-5">
+                                                                    <label class="form-label small mb-1">Duration</label>
+                                                                    <input type="text" class="form-control" name="stage_duration[]" placeholder="1m" value="1m">
+                                                                </div>
+                                                                <div class="col-md-5">
+                                                                    <label class="form-label small mb-1">Target RPS</label>
+                                                                    <input type="number" class="form-control" name="stage_target[]" placeholder="0" value="0">
+                                                                </div>
+                                                                <div class="col-md-2 text-end">
+                                                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRateStage(this)">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addRateStage()">
+                                                        <i class="fas fa-plus me-1"></i>Add Stage
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Virtual Users Settings -->
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card">
+                                            <div class="card-header bg-warning text-dark">
+                                                <h5 class="mb-0"><i class="fas fa-users me-2"></i>3. Virtual Users (Auto-scaling)</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label for="pre_allocated_vus" class="form-label">Starting VUs</label>
+                                                    <input type="number" class="form-control" id="pre_allocated_vus" name="pre_allocated_vus" value="20" min="1" max="5000">
+                                                    <div class="form-text">
+                                                        K6 starts with this many virtual users (max: 5,000)<br>
+                                                        <small class="text-warning">
+                                                            <i class="fas fa-lightbulb"></i> <strong>Tip:</strong> For 50 RPS, start with 50-100 VUs to account for response delays
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="max_vus" class="form-label">Maximum VUs</label>
+                                                    <input type="number" class="form-control" id="max_vus" name="max_vus" value="200" min="1" max="100000">
+                                                    <div class="form-text">K6 will add more VUs automatically if needed to maintain your target rate (max: 100,000)</div>
+                                                </div>
+                                                <div class="alert alert-info">
+                                                    <small><i class="fas fa-info-circle me-1"></i>K6 automatically adjusts VUs to maintain your target request rate</small>
+                                                </div>
+                                                
+                                                <div class="alert alert-warning">
+                                                    <h6><i class="fas fa-exclamation-triangle me-1"></i>Understanding Rate Control</h6>
+                                                    <small>
+                                                        Rate control counts <strong>completed requests</strong> (with responses), not sent requests.<br>
+                                                        <strong>Example:</strong> 50 RPS × 30s = 1500 requests <em>only if</em> responses are instant.<br>
+                                                        Slow responses = fewer completed requests. Monitor response times in reports.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Submit Button -->
+                                <div class="row mt-4">
+                                    <div class="col-md-12 text-center">
+                                        <button type="submit" class="btn btn-success btn-custom px-5" id="rateUploadSubmitBtn">
+                                            <i class="fas fa-rocket me-2"></i>Start Rate Control Test
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Manual Rate Control Configuration Section -->
+                    <div class="card card-custom d-none" id="rateManualSection">
+                        <div class="card-body p-5">
+                            <h3 class="card-title text-center mb-4">
+                                <i class="fas fa-edit me-2"></i>Manual Rate Control Configuration
+                            </h3>
+                            
+                            <form method="POST" action="/upload_simple_rate_control" id="rateManualForm">
+                                <!-- Basic Configuration -->
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Base URL <span class="text-danger">*</span></label>
+                                        <input type="url" class="form-control" name="base_url" placeholder="https://api.example.com" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Report Title</label>
+                                        <input type="text" class="form-control" name="report_title" placeholder="Rate Control Test" value="Rate Control API Test">
+                                    </div>
+                                </div>
+                                
+                                <!-- Authentication Tokens -->
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="form-label mb-0">Authentication Tokens</label>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRateToken()">
+                                            <i class="fas fa-plus me-1"></i>Add Token
+                                        </button>
+                                    </div>
+                                    <div id="rateTokensContainer">
+                                        <!-- Tokens will be added dynamically -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Endpoints Configuration -->
+                                <div class="mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="form-label mb-0">API Endpoints <span class="text-danger">*</span></label>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="addRateEndpoint()">
+                                            <i class="fas fa-plus me-1"></i>Add Endpoint
+                                        </button>
+                                    </div>
+                                    <div id="rateEndpointsContainer">
+                                        <!-- Default endpoint will be added on page load -->
+                                    </div>
+                                </div>
+                                
+                                <!-- Rate Configuration -->
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header bg-success text-white">
+                                                <h6 class="mb-0"><i class="fas fa-cog me-2"></i>Rate Control Settings</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="btn-group w-100 mb-3" role="group">
+                                                    <input type="radio" class="btn-check" name="manual_rate_type" id="manualConstant" value="constant" checked>
+                                                    <label class="btn btn-outline-primary" for="manualConstant">
+                                                        <i class="fas fa-minus me-1"></i>Constant Rate
+                                                    </label>
+                                                    
+                                                    <input type="radio" class="btn-check" name="manual_rate_type" id="manualRamping" value="ramping">
+                                                    <label class="btn btn-outline-primary" for="manualRamping">
+                                                        <i class="fas fa-chart-line me-1"></i>Ramping Stages
+                                                    </label>
+                                                </div>
+                                                
+                                                <!-- Constant Rate Settings -->
+                                                <div id="manualConstantSettings">
+                                                    <div class="mb-3">
+                                                        <label for="manual_target_rate" class="form-label">Requests Per Second (RPS)</label>
+                                                        <input type="number" class="form-control" id="manual_target_rate" name="target_rate" value="50" min="1" max="50000">
+                                                        <div class="form-text">
+                                                            <strong>Target completed requests per second</strong> (max: 50,000)<br>
+                                                            <small class="text-info">
+                                                                <i class="fas fa-info-circle"></i> Actual rate depends on response times. 
+                                                                Slow responses = fewer completed requests. Increase VUs if target isn't met.
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="manual_duration" class="form-label">Test Duration</label>
+                                                        <select class="form-control" id="manual_duration" name="duration">
+                                                            <option value="30s">30 seconds</option>
+                                                            <option value="1m">1 minute</option>
+                                                            <option value="2m">2 minutes</option>
+                                                            <option value="5m" selected>5 minutes</option>
+                                                            <option value="10m">10 minutes</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Virtual Users Settings -->
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header bg-warning text-dark">
+                                                <h6 class="mb-0"><i class="fas fa-users me-2"></i>Virtual Users (Auto-scaling)</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="mb-3">
+                                                    <label for="manual_pre_allocated_vus" class="form-label">Starting VUs</label>
+                                                    <input type="number" class="form-control" id="manual_pre_allocated_vus" name="pre_allocated_vus" value="20" min="1" max="5000">
+                                                    <div class="form-text">
+                                                        K6 starts with this many virtual users (max: 5,000)<br>
+                                                        <small class="text-warning">
+                                                            <i class="fas fa-lightbulb"></i> <strong>Tip:</strong> For 50 RPS, start with 50-100 VUs to account for response delays
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="manual_max_vus" class="form-label">Maximum VUs</label>
+                                                    <input type="number" class="form-control" id="manual_max_vus" name="max_vus" value="200" min="1" max="100000">
+                                                    <div class="form-text">K6 will add more VUs automatically if needed to maintain your target rate (max: 100,000)</div>
+                                                </div>
+                                                <div class="alert alert-info">
+                                                    <small><i class="fas fa-info-circle me-1"></i>K6 automatically adjusts VUs to maintain your target request rate</small>
+                                                </div>
+                                                
+                                                <div class="alert alert-warning">
+                                                    <h6><i class="fas fa-exclamation-triangle me-1"></i>Understanding Rate Control</h6>
+                                                    <small>
+                                                        Rate control counts <strong>completed requests</strong> (with responses), not sent requests.<br>
+                                                        <strong>Example:</strong> 50 RPS × 30s = 1500 requests <em>only if</em> responses are instant.<br>
+                                                        Slow responses = fewer completed requests. Monitor response times in reports.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Ramping Stages Section (Hidden by default) -->
+                                <div class="row mb-4" id="manualRateStagesSection" style="display: none;">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header bg-info text-white">
+                                                <h6 class="mb-0"><i class="fas fa-chart-area me-2"></i>Ramping Stages Configuration</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="text-muted">Define how your request rate should change over time:</p>
+                                                <div id="manualRateStagesContainer">
+                                                    <!-- Default stages -->
+                                                    <div class="stage-item mb-3 p-3 bg-light rounded">
+                                                        <div class="row align-items-end">
+                                                            <div class="col-md-5">
+                                                                <label class="form-label small mb-1">Duration</label>
+                                                                <input type="text" class="form-control" name="manual_stage_duration[]" placeholder="30s" value="30s">
+                                                            </div>
+                                                            <div class="col-md-5">
+                                                                <label class="form-label small mb-1">Target RPS</label>
+                                                                <input type="number" class="form-control" name="manual_stage_target[]" placeholder="20" value="20" max="50000">
+                                                                <div class="form-text small">Maximum: 50,000 RPS</div>
+                                                            </div>
+                                                            <div class="col-md-2 text-end">
+                                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeManualRateStage(this)" disabled>
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="addManualRateStage()">
+                                                    <i class="fas fa-plus me-1"></i>Add Stage
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Submit Button -->
+                                <div class="row mt-4">
+                                    <div class="col-md-12 text-center">
+                                        <button type="submit" class="btn btn-success btn-custom px-5" id="rateManualSubmitBtn">
+                                            <i class="fas fa-play me-2"></i>Start Rate Control Test
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Hidden field to indicate manual configuration -->
+                                <input type="hidden" name="is_manual" value="true">
+                            </form>
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- Standard VU Mode Configuration -->
+                    <!-- Configuration Method Selector -->
+                    <div class="text-center mb-4">
+                        <div class="btn-group" role="group" aria-label="Configuration method">
+                            <input type="radio" class="btn-check" name="configMethod" id="uploadMethod" checked>
+                            <label class="btn btn-outline-primary" for="uploadMethod">
+                                <i class="fas fa-upload me-2"></i>Upload JSON File
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="configMethod" id="manualMethod">
+                            <label class="btn btn-outline-primary" for="manualMethod">
+                                <i class="fas fa-edit me-2"></i>Manual Configuration
+                            </label>
+                        </div>
+                    </div>
                 
                 <!-- Upload Configuration Section -->
                 <div class="card card-custom" id="uploadSection">
@@ -91,8 +600,13 @@
                                                         <input type="text" class="form-control form-control-sm" name="stage_duration[]" placeholder="1m" value="1m">
                                                     </div>
                                                     <div class="col-md-4">
-                                                        <label class="form-label small">Target Users</label>
-                                                        <input type="number" class="form-control form-control-sm" name="stage_target[]" placeholder="50" value="50">
+                                                        <label class="form-label small">
+                                                            Target Users
+                                                            <button type="button" class="btn btn-sm btn-outline-info ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="VU-based testing: Recommended 1-10,000 VUs. Higher values need adequate system resources.">
+                                                                <i class="fas fa-info-circle"></i>
+                                                            </button>
+                                                        </label>
+                                                        <input type="number" class="form-control form-control-sm" name="stage_target[]" placeholder="50" value="50" max="100000">
                                                     </div>
                                                     <div class="col-md-2 d-flex align-items-end">
                                                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeStage(this)" disabled>
@@ -105,7 +619,7 @@
                                                         <input type="text" class="form-control form-control-sm" name="stage_duration[]" placeholder="20s" value="20s">
                                                     </div>
                                                     <div class="col-md-4">
-                                                        <input type="number" class="form-control form-control-sm" name="stage_target[]" placeholder="0" value="0">
+                                                        <input type="number" class="form-control form-control-sm" name="stage_target[]" placeholder="0" value="0" max="100000">
                                                     </div>
                                                     <div class="col-md-2 d-flex align-items-end">
                                                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeStage(this)">
@@ -118,7 +632,7 @@
                                                         <input type="text" class="form-control form-control-sm" name="stage_duration[]" placeholder="40s" value="40s">
                                                     </div>
                                                     <div class="col-md-4">
-                                                        <input type="number" class="form-control form-control-sm" name="stage_target[]" placeholder="0" value="0">
+                                                        <input type="number" class="form-control form-control-sm" name="stage_target[]" placeholder="0" value="0" max="100000">
                                                     </div>
                                                     <div class="col-md-2 d-flex align-items-end">
                                                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeStage(this)">
@@ -131,7 +645,7 @@
                                                         <input type="text" class="form-control form-control-sm" name="stage_duration[]" placeholder="1m" value="1m">
                                                     </div>
                                                     <div class="col-md-4">
-                                                        <input type="number" class="form-control form-control-sm" name="stage_target[]" placeholder="50" value="50">
+                                                        <input type="number" class="form-control form-control-sm" name="stage_target[]" placeholder="50" value="50" max="100000">
                                                     </div>
                                                     <div class="col-md-2 d-flex align-items-end">
                                                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeStage(this)">
@@ -240,8 +754,13 @@
                                                         <input type="text" class="form-control form-control-sm" name="manual_stage_duration[]" placeholder="1m" value="1m">
                                                     </div>
                                                     <div class="col-md-4">
-                                                        <label class="form-label small">Target Users</label>
-                                                        <input type="number" class="form-control form-control-sm" name="manual_stage_target[]" placeholder="50" value="50">
+                                                        <label class="form-label small">
+                                                            Target Users
+                                                            <button type="button" class="btn btn-sm btn-outline-info ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="VU-based testing: Recommended 1-10,000 VUs. Higher values need adequate system resources.">
+                                                                <i class="fas fa-info-circle"></i>
+                                                            </button>
+                                                        </label>
+                                                        <input type="number" class="form-control form-control-sm" name="manual_stage_target[]" placeholder="50" value="50" max="100000">
                                                     </div>
                                                     <div class="col-md-2 d-flex align-items-end">
                                                         <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeManualStage(this)" disabled>
@@ -267,13 +786,14 @@
                             </div>
                             
                             <div class="text-center mt-4">
-                                <button type="submit" class="btn btn-success btn-custom" id="manualSubmitBtn">
+                                <button type="submit" class="btn btn-success btn-custom" id="uploadSubmitBtn" disabled>
                                     <i class="fas fa-play me-2"></i>Start Load Test
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
 
@@ -744,5 +1264,244 @@
             }
         });
     }
+    
+    function selectMode(mode) {
+        if (mode === 'standard') {
+            // Scroll to configuration section
+            document.getElementById('uploadSection').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start' 
+            });
+        }
+    }
+    
+    // Initialize Bootstrap tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
 </script>
+
+{% if active_mode == 'rate_control' %}
+<script>
+    // Rate Control Configuration Method Switching
+    document.querySelectorAll('input[name="rateConfigMethod"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const uploadSection = document.getElementById('rateUploadSection');
+            const manualSection = document.getElementById('rateManualSection');
+            
+            if (this.id === 'rateUploadMethod') {
+                uploadSection.classList.remove('d-none');
+                manualSection.classList.add('d-none');
+            } else {
+                uploadSection.classList.add('d-none');
+                manualSection.classList.remove('d-none');
+            }
+        });
+    });
+
+    // Rate Control specific functions
+    // File upload handling for rate control
+    document.getElementById('rateFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const fileInfo = document.getElementById('rateFileInfo');
+        const fileName = document.getElementById('rateFileName');
+        
+        if (file) {
+            fileName.textContent = file.name;
+            fileInfo.classList.remove('d-none');
+        } else {
+            fileInfo.classList.add('d-none');
+        }
+    });
+
+    // Rate type switching
+    document.querySelectorAll('input[name="rate_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const rampingSettings = document.getElementById('rampingSettings');
+            const constantSettings = document.getElementById('constantSettings');
+            
+            if (this.value === 'ramping') {
+                rampingSettings.style.display = 'block';
+                constantSettings.style.display = 'none';
+            } else {
+                rampingSettings.style.display = 'none';
+                constantSettings.style.display = 'block';
+            }
+        });
+    });
+
+    // Rate control stage management
+    function addRateStage() {
+        const container = document.getElementById('rateStagesContainer');
+        const stageDiv = document.createElement('div');
+        stageDiv.className = 'stage-item mb-3 p-3 bg-light rounded';
+        stageDiv.innerHTML = `
+            <div class="row align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small mb-1">Duration</label>
+                    <input type="text" class="form-control" name="stage_duration[]" placeholder="1m">
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small mb-1">Target RPS</label>
+                    <input type="number" class="form-control" name="stage_target[]" placeholder="50">
+                </div>
+                <div class="col-md-2 text-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRateStage(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(stageDiv);
+    }
+
+    function removeRateStage(button) {
+        button.closest('.stage-item').remove();
+    }
+
+    // Manual Rate Control specific functions
+    // Rate type switching for manual mode
+    document.querySelectorAll('input[name="manual_rate_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const stagesSection = document.getElementById('manualRateStagesSection');
+            const constantSettings = document.getElementById('manualConstantSettings');
+            
+            if (this.value === 'ramping') {
+                stagesSection.style.display = 'block';
+                constantSettings.style.display = 'none';
+            } else {
+                stagesSection.style.display = 'none';
+                constantSettings.style.display = 'block';
+            }
+        });
+    });
+
+    // Manual rate control stage management
+    function addManualRateStage() {
+        const container = document.getElementById('manualRateStagesContainer');
+        const stageDiv = document.createElement('div');
+        stageDiv.className = 'stage-item mb-3 p-3 bg-light rounded';
+        stageDiv.innerHTML = `
+            <div class="row align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small mb-1">Duration</label>
+                    <input type="text" class="form-control" name="manual_stage_duration[]" placeholder="1m">
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small mb-1">Target RPS</label>
+                    <input type="number" class="form-control" name="manual_stage_target[]" placeholder="50" max="50000">
+                    <div class="form-text small">Maximum: 50,000 RPS</div>
+                </div>
+                <div class="col-md-2 text-end">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeManualRateStage(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(stageDiv);
+    }
+
+    function removeManualRateStage(button) {
+        button.closest('.stage-item').remove();
+    }
+
+    // Token management for manual rate control
+    function addRateToken() {
+        const container = document.getElementById('rateTokensContainer');
+        const tokenDiv = document.createElement('div');
+        tokenDiv.className = 'row mb-2';
+        tokenDiv.innerHTML = `
+            <div class="col-md-5">
+                <input type="text" class="form-control" name="token_name[]" placeholder="AUTH_TOKEN">
+            </div>
+            <div class="col-md-6">
+                <input type="text" class="form-control" name="token_value[]" placeholder="your-auth-token-here">
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-outline-danger" onclick="removeRateToken(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(tokenDiv);
+    }
+
+    function removeRateToken(button) {
+        button.closest('.row').remove();
+    }
+
+    // Endpoint management for manual rate control
+    function addRateEndpoint() {
+        const container = document.getElementById('rateEndpointsContainer');
+        const endpointDiv = document.createElement('div');
+        endpointDiv.className = 'card mb-3';
+        endpointDiv.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">Endpoint</h6>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRateEndpoint(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Endpoint Name</label>
+                        <input type="text" class="form-control" name="endpoint_name[]" placeholder="GET_USERS">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" name="endpoint_description[]" placeholder="Get list of users">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Method</label>
+                        <select class="form-control" name="endpoint_method[]">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="PATCH">PATCH</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">URL Path</label>
+                        <input type="text" class="form-control" name="endpoint_url[]" placeholder="/api/v1/users">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Weight (%)</label>
+                        <input type="number" class="form-control" name="endpoint_weight[]" placeholder="30" value="30" min="1" max="100">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Headers (JSON format)</label>
+                        <textarea class="form-control" name="endpoint_headers[]" rows="3" placeholder='{"Authorization": "&lt;AUTH_TOKEN&gt;", "Content-Type": "application/json"}'></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Body (JSON format)</label>
+                        <textarea class="form-control" name="endpoint_body[]" rows="3" placeholder='{"key": "value"}'></textarea>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(endpointDiv);
+    }
+
+    function removeRateEndpoint(button) {
+        button.closest('.card').remove();
+    }
+
+    // Add default endpoint on page load for manual mode
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('rateEndpointsContainer').children.length === 0) {
+            addRateEndpoint();
+        }
+    });
+</script>
+{% endif %}
 {% endblock %}
