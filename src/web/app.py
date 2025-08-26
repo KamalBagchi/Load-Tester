@@ -330,6 +330,11 @@ def run_k6_test(test_id, endpoints_file):
             if os.path.exists(result_file):
                 clean_result_name = os.path.basename(result_file)
                 shutil.move(result_file, os.path.join(RESULTS_FOLDER, clean_result_name))
+                # Update the stored filename to match the actual moved file
+                if result_file.endswith('_summary.json'):
+                    test_status[test_id]['summary_file'] = clean_result_name
+                elif result_file.endswith('_detailed.json'):
+                    test_status[test_id]['detailed_file'] = clean_result_name
         
     except subprocess.TimeoutExpired:
         test_status[test_id]['status'] = 'failed'
@@ -483,6 +488,8 @@ def run_simple_rate_control_test(test_id, endpoints_file):
         if exit_code in [0, 99]:  # Success or threshold violations
             test_status[test_id]['status'] = 'completed'
             test_status[test_id]['stage'] = 'Generating rate control report'
+            test_status[test_id]['summary_file'] = summary_file
+            test_status[test_id]['detailed_file'] = detailed_file
             
             # Generate HTML report
             try:
@@ -544,6 +551,11 @@ def run_simple_rate_control_test(test_id, endpoints_file):
                 if os.path.exists(result_file):
                     clean_result_name = os.path.basename(result_file)
                     shutil.move(result_file, os.path.join(RESULTS_FOLDER, clean_result_name))
+                    # Update the stored filename to match the actual moved file
+                    if result_file == detailed_file:
+                        test_status[test_id]['detailed_file'] = clean_result_name
+                    elif result_file == summary_file:
+                        test_status[test_id]['summary_file'] = clean_result_name
         else:
             test_status[test_id]['status'] = 'failed'
             test_status[test_id]['error'] = f"Simple rate control test failed with exit code {exit_code}"
@@ -1064,11 +1076,37 @@ def download_results(test_id, file_type):
         return redirect(url_for('index'))
     
     if file_type == 'summary':
-        filename = f"{test_id}_{test_status[test_id]['summary_file']}"
+        # Check if summary_file is set, otherwise try to find it
+        if 'summary_file' in test_status[test_id]:
+            filename = test_status[test_id]['summary_file']
+        else:
+            # Fallback: look for summary files in the results folder
+            summary_files = [f for f in os.listdir(RESULTS_FOLDER) if f.endswith('_summary.json')]
+            if summary_files:
+                filename = summary_files[-1]  # Get the most recent one
+            else:
+                flash('Summary file not found')
+                return redirect(url_for('index'))
     elif file_type == 'detailed':
-        filename = f"{test_id}_{test_status[test_id]['detailed_file']}"
+        # Check if detailed_file is set, otherwise try to find it
+        if 'detailed_file' in test_status[test_id]:
+            filename = test_status[test_id]['detailed_file']
+        else:
+            # Fallback: look for detailed files in the results folder
+            detailed_files = [f for f in os.listdir(RESULTS_FOLDER) if f.endswith('_detailed.json')]
+            if detailed_files:
+                filename = detailed_files[-1]  # Get the most recent one
+            else:
+                flash('Detailed file not found')
+                return redirect(url_for('index'))
     else:
         flash('Invalid file type')
+        return redirect(url_for('index'))
+    
+    # Check if file exists
+    file_path = os.path.join(RESULTS_FOLDER, filename)
+    if not os.path.exists(file_path):
+        flash(f'Result file not found: {filename}')
         return redirect(url_for('index'))
     
     return send_from_directory(RESULTS_FOLDER, filename, as_attachment=True)
